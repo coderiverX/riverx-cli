@@ -1,6 +1,6 @@
 # RiverX — 开发进度跟踪
 
-> 最后更新：2026-04-09
+> 最后更新：2026-04-09（M0.1 + M0.2 已完成）
 
 ---
 
@@ -8,28 +8,28 @@
 
 ### 0.1 项目初始化
 
-- [ ] `pnpm init` 创建 package.json
-- [ ] 配置 TypeScript（tsconfig.json，strict 模式，target ES2022）
-- [ ] 配置 vitest（vitest.config.ts）
+- [x] `pnpm init` 创建 package.json
+- [x] 配置 TypeScript（tsconfig.json，strict 模式，target ES2022）
+- [x] 配置 vitest（vitest.config.ts）
 - [ ] 配置 ESLint + Prettier
-- [ ] 配置构建脚本（tsc 编译到 dist/）
-- [ ] 配置 `bin` 字段，使 `riverx` 可作为全局命令执行
-- [ ] 创建 src/ 目录结构骨架
-- [ ] 添加 .gitignore（node_modules, dist, .env, .DS_Store）
-- [ ] `git init` + 首次提交
+- [x] 配置构建脚本（tsc 编译到 dist/）
+- [x] 配置 `bin` 字段，使 `riverx` 可作为全局命令执行
+- [x] 创建 src/ 目录结构骨架
+- [x] 添加 .gitignore（node_modules, dist, .env, .DS_Store）
+- [x] `git init` + 首次提交
 
 ### 0.2 CLI 入口 (`src/main.ts`)
 
-- [ ] 解析命令行参数（process.argv 手动解析，不用第三方库）
-  - [ ] `riverx "prompt"` — headless 模式
-  - [ ] `riverx` — 无参数进入 REPL 模式
-  - [ ] `riverx --help` — 帮助信息
-  - [ ] `riverx --version` — 版本号
-  - [ ] `riverx --config` — 打印当前配置
-- [ ] 加载配置文件（~/.riverx/config.json）
-- [ ] 检测当前平台（macOS / Linux）和默认 shell
-- [ ] 根据参数决定进入 headless 或 REPL 路径
-- [ ] headless 路径：调用 QueryEngine → 输出结果 → process.exit
+- [x] 解析命令行参数（process.argv 手动解析，不用第三方库）
+  - [x] `riverx "prompt"` — headless 模式
+  - [x] `riverx` — 无参数进入 REPL 模式
+  - [x] `riverx --help` — 帮助信息
+  - [x] `riverx --version` — 版本号
+  - [x] `riverx --config` — 打印当前配置
+- [x] 加载配置文件（~/.riverx/config.json）
+- [x] 检测当前平台（macOS / Linux）和默认 shell
+- [x] 根据参数决定进入 headless 或 REPL 路径
+- [x] headless 路径：调用 QueryEngine → 输出结果 → process.exit
 
 ### 0.3 平台与 Shell 检测 (`src/utils/platform.ts`, `src/utils/shell.ts`)
 
@@ -374,7 +374,7 @@
 
 | 里程碑 | 任务数 | 状态 |
 |--------|--------|------|
-| M0 — 基础骨架 | 46 | 🔲 未开始 |
+| M0 — 基础骨架 | 46 | 🔄 进行中（0.1 + 0.2 已完成） |
 | M1 — 核心工具 + 多轮 | 48 | 🔲 未开始 |
 | M2 — REPL 与会话 | 30 | 🔲 未开始 |
 | M3 — 打磨与发布 | 33 | 🔲 未开始 |
