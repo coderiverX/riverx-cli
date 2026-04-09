@@ -4,67 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-// ── 类型定义 ──────────────────────────────────────────────────────────────────
-
-interface RiverXConfig {
-  llm: {
-    provider: string
-    model: string
-    base_url: string
-    api_key: string
-  }
-  security: {
-    workspace_root: string
-    auto_confirm_safe_commands: boolean
-    confirm_medium_risk: boolean
-  }
-  shell: {
-    default: string
-    timeout_ms: number
-  }
-}
-
-// ── 默认配置 ──────────────────────────────────────────────────────────────────
-
-const DEFAULT_CONFIG: RiverXConfig = {
-  llm: {
-    provider: 'qwen',
-    model: 'qwen-plus',
-    base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    api_key: '',
-  },
-  security: {
-    workspace_root: 'cwd',
-    auto_confirm_safe_commands: true,
-    confirm_medium_risk: false,
-  },
-  shell: {
-    default: 'auto',
-    timeout_ms: 30000,
-  },
-}
-
-// ── 平台检测（将在 M0.3 迁移至 src/utils/platform.ts）───────────────────────
-
-function detectPlatform() {
-  const platform = process.platform as 'darwin' | 'linux'
-  const shell = process.env.SHELL ?? '/bin/bash'
-  const username = process.env.USER ?? os.userInfo().username
-  const cwd = process.cwd()
-  return { platform, shell, username, cwd }
-}
-
-// ── 配置加载（将在 M0.4 迁移至 src/config/config.ts）────────────────────────
-
-function loadConfig(): RiverXConfig {
-  const configPath = path.join(os.homedir(), '.riverx', 'config.json')
-  try {
-    const raw = fs.readFileSync(configPath, 'utf-8')
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) }
-  } catch {
-    return DEFAULT_CONFIG
-  }
-}
+import { detectPlatform } from './utils/platform.js'
+import { detectShell } from './utils/shell.js'
+import { loadConfig, type RiverXConfig } from './config/config.js'
 
 // ── 命令处理 ──────────────────────────────────────────────────────────────────
 
@@ -102,9 +44,10 @@ function printConfig(config: RiverXConfig) {
 // ── 执行路径（将在后续里程碑完整实现）────────────────────────────────────────
 
 async function runHeadless(prompt: string, _config: RiverXConfig) {
-  const { platform, shell, username, cwd } = detectPlatform()
+  const { os: platform, username, cwd } = detectPlatform()
+  const { path: shellPath } = detectShell()
   console.log(`[riverx] headless 模式`)
-  console.log(`  平台：${platform}  Shell：${shell}  用户：${username}`)
+  console.log(`  平台：${platform}  Shell：${shellPath}  用户：${username}`)
   console.log(`  工作目录：${cwd}`)
   console.log(`  指令：${prompt}`)
   console.log()
@@ -113,8 +56,9 @@ async function runHeadless(prompt: string, _config: RiverXConfig) {
 }
 
 async function runRepl(_config: RiverXConfig) {
-  const { platform, shell, username, cwd } = detectPlatform()
-  console.log(`riverx 0.1.0  |  ${platform}  ${shell}  用户：${username}`)
+  const { os: platform, username, cwd } = detectPlatform()
+  const { path: shellPath } = detectShell()
+  console.log(`riverx 0.1.0  |  ${platform}  ${shellPath}  用户：${username}`)
   console.log(`工作目录：${cwd}`)
   console.log()
   console.log('REPL 交互模式尚未实现，将在 M2 完成。')

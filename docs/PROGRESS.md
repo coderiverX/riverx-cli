@@ -1,6 +1,6 @@
 # RiverX — 开发进度跟踪
 
-> 最后更新：2026-04-09（M0.1 + M0.2 已完成）
+> 最后更新：2026-04-09（M0.1 + M0.2 + M0.3 + M0.4 已完成）
 
 ---
 
@@ -33,21 +33,21 @@
 
 ### 0.3 平台与 Shell 检测 (`src/utils/platform.ts`, `src/utils/shell.ts`)
 
-- [ ] 检测 OS 类型（darwin / linux）
-- [ ] 检测 OS 版本
-- [ ] 检测当前用户名
-- [ ] 检测默认 shell（$SHELL 环境变量）
-- [ ] 验证 shell 可执行（which bash / which zsh）
-- [ ] 导出 `PlatformInfo` 结构供其他模块使用
+- [x] 检测 OS 类型（darwin / linux）
+- [x] 检测 OS 版本
+- [x] 检测当前用户名
+- [x] 检测默认 shell（$SHELL 环境变量）
+- [x] 验证 shell 可执行（which bash / which zsh）
+- [x] 导出 `PlatformInfo` 结构供其他模块使用
 
 ### 0.4 配置系统 (`src/config/config.ts`)
 
-- [ ] 定义 `RiverXConfig` 类型（llm / security / shell 三个区块）
-- [ ] 首次运行时自动创建 ~/.riverx/ 目录
-- [ ] 首次运行时生成默认 config.json
-- [ ] 加载并校验 config.json
-- [ ] 支持环境变量覆盖（RIVERX_API_KEY, RIVERX_MODEL 等）
-- [ ] config 加载失败时给出清晰错误提示
+- [x] 定义 `RiverXConfig` 类型（llm / security / shell 三个区块）
+- [x] 首次运行时自动创建 ~/.riverx/ 目录
+- [x] 首次运行时生成默认 config.json
+- [x] 加载并校验 config.json
+- [x] 支持环境变量覆盖（RIVERX_API_KEY, RIVERX_MODEL 等）
+- [x] config 加载失败时给出清晰错误提示
 
 ### 0.5 LLM 适配层 (`src/llm/`)
 
@@ -374,7 +374,7 @@
 
 | 里程碑 | 任务数 | 状态 |
 |--------|--------|------|
-| M0 — 基础骨架 | 46 | 🔄 进行中（0.1 + 0.2 已完成） |
+| M0 — 基础骨架 | 46 | 🔄 进行中（0.1 + 0.2 + 0.3 + 0.4 已完成） |
 | M1 — 核心工具 + 多轮 | 48 | 🔲 未开始 |
 | M2 — REPL 与会话 | 30 | 🔲 未开始 |
 | M3 — 打磨与发布 | 33 | 🔲 未开始 |
