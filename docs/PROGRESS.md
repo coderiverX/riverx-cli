@@ -1,6 +1,6 @@
 # RiverX — 开发进度跟踪
 
-> 最后更新：2026-04-09（M0.1 + M0.2 + M0.3 + M0.4 已完成）
+> 最后更新：2026-04-09（M0.1 + M0.2 + M0.3 + M0.4 + M0.5 已完成）
 
 ---
 
@@ -53,27 +53,26 @@
 
 #### 0.5.1 Provider 抽象 (`src/llm/provider.ts`)
 
-- [ ] 定义 `LLMProvider` 接口
-  - [ ] `chat(params: ChatParams): AsyncIterable<ChatChunk>`
-- [ ] 定义 `ChatParams` 类型（messages, tools, model, temperature 等）
-- [ ] 定义 `ChatChunk` 类型（流式返回的增量内容）
-- [ ] 定义 `ChatMessage` 类型（role, content, tool_calls, tool_call_id）
-- [ ] 定义 `ToolCall` 类型（id, function.name, function.arguments）
-- [ ] 定义 `ToolDefinition` 类型（name, description, parameters JSON Schema）
+- [x] 定义 `LLMProvider` 接口
+  - [x] `chat(params: ChatParams): AsyncIterable<ChatChunk>`
+- [x] 定义 `ChatParams` 类型（messages, tools, model, temperature 等）
+- [x] 定义 `ChatChunk` 类型（流式返回的增量内容）
+- [x] 定义 `ChatMessage` 类型（role, content, tool_calls, tool_call_id）
+- [x] 定义 `ToolCall` 类型（id, function.name, function.arguments）
+- [x] 定义 `ToolDefinition` 类型（name, description, parameters JSON Schema）
 
 #### 0.5.2 Qwen 实现 (`src/llm/qwen.ts`)
 
-- [ ] 实现 `QwenProvider` 类
-- [ ] 使用 `fetch` 调用 Qwen OpenAI 兼容 API（/v1/chat/completions）
-- [ ] 请求参数组装（model, messages, tools, stream: true）
-- [ ] SSE 流式响应解析（逐行读取 data: {...}）
-- [ ] 解析 delta.content（文本内容）
-- [ ] 解析 delta.tool_calls（工具调用）
-- [ ] 处理 [DONE] 信号
-- [ ] API 错误处理（401 无效 key、429 限流、500 服务端错误）
-- [ ] 超时处理（默认 60s）
-- [ ] 失败自动重试 1 次
-- [ ] 单元测试：mock API 响应，验证流式解析正确性
+- [x] 实现 `QwenProvider` 类
+- [x] 使用 openai SDK 调用 Qwen OpenAI 兼容 API（baseURL 指向 DashScope）
+- [x] 请求参数组装（model, messages, tools, stream: true）
+- [x] SSE 流式响应解析（通过 SDK AsyncIterable）
+- [x] 解析 delta.content（文本内容）
+- [x] 解析 delta.tool_calls（工具调用）
+- [x] API 错误处理（401 无效 key、429 限流、500 服务端错误）
+- [x] 超时处理（默认 60s，SDK 内置）
+- [x] 失败自动重试 1 次（SDK maxRetries: 1）
+- [x] 单元测试：mock openai SDK，验证流式解析正确性（7 个测试用例）
 
 ### 0.6 工具抽象 (`src/tool.ts`)
 
@@ -374,7 +373,7 @@
 
 | 里程碑 | 任务数 | 状态 |
 |--------|--------|------|
-| M0 — 基础骨架 | 46 | 🔄 进行中（0.1 + 0.2 + 0.3 + 0.4 已完成） |
+| M0 — 基础骨架 | 46 | 🔄 进行中（0.1 + 0.2 + 0.3 + 0.4 + 0.5 已完成） |
 | M1 — 核心工具 + 多轮 | 48 | 🔲 未开始 |
 | M2 — REPL 与会话 | 30 | 🔲 未开始 |
 | M3 — 打磨与发布 | 33 | 🔲 未开始 |
