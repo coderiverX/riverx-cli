@@ -7,6 +7,10 @@ import path from 'node:path'
 import { detectPlatform } from './utils/platform.js'
 import { detectShell } from './utils/shell.js'
 import { loadConfig, type RiverXConfig } from './config/config.js'
+import { QwenProvider } from './llm/qwen.js'
+import { ToolRegistry } from './tool.js'
+import { execCmd } from './tools/exec-cmd.js'
+import { QueryEngine } from './query-engine.js'
 
 // ── 命令处理 ──────────────────────────────────────────────────────────────────
 
@@ -41,18 +45,35 @@ function printConfig(config: RiverXConfig) {
   console.log(JSON.stringify(config, null, 2))
 }
 
-// ── 执行路径（将在后续里程碑完整实现）────────────────────────────────────────
+// ── 执行路径 ──────────────────────────────────────────────────────────────────
 
-async function runHeadless(prompt: string, _config: RiverXConfig) {
-  const { os: platform, username, cwd } = detectPlatform()
-  const { path: shellPath } = detectShell()
-  console.log(`[riverx] headless 模式`)
-  console.log(`  平台：${platform}  Shell：${shellPath}  用户：${username}`)
-  console.log(`  工作目录：${cwd}`)
-  console.log(`  指令：${prompt}`)
+async function runHeadless(prompt: string, config: RiverXConfig) {
+  if (!config.llm.api_key) {
+    console.error(
+      '错误：未配置 API Key\n' +
+      '请在 ~/.riverx/config.json 中设置 llm.api_key\n' +
+      '或通过环境变量 RIVERX_API_KEY 设置',
+    )
+    process.exit(1)
+  }
+
+  const platform = detectPlatform()
+  const shell = detectShell()
+
+  const provider = new QwenProvider(config.llm)
+  const registry = new ToolRegistry()
+  registry.register(execCmd)
+
+  const engine = new QueryEngine(provider, registry, platform, shell, config)
+
+  const ac = new AbortController()
+  process.once('SIGINT', () => {
+    ac.abort()
+    process.exit(130)
+  })
+
+  await engine.run(prompt, chunk => process.stdout.write(chunk), ac.signal)
   console.log()
-  console.log('QueryEngine 尚未实现，将在 M0.8 完成。')
-  process.exit(0)
 }
 
 async function runRepl(_config: RiverXConfig) {
