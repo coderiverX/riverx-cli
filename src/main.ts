@@ -10,6 +10,13 @@ import { loadConfig, type RiverXConfig } from './config/config.js'
 import { QwenProvider } from './llm/qwen.js'
 import { ToolRegistry } from './tool.js'
 import { execCmd } from './tools/exec-cmd.js'
+import { readFile } from './tools/read-file.js'
+import { writeFile } from './tools/write-file.js'
+import { patchFile } from './tools/patch-file.js'
+import { listFiles } from './tools/list-files.js'
+import { grep } from './tools/grep.js'
+import { confirm } from './tools/confirm.js'
+import { session } from './tools/session.js'
 import { QueryEngine } from './query-engine.js'
 
 // ── 命令处理 ──────────────────────────────────────────────────────────────────
@@ -62,7 +69,9 @@ async function runHeadless(prompt: string, config: RiverXConfig) {
 
   const provider = new QwenProvider(config.llm)
   const registry = new ToolRegistry()
-  registry.register(execCmd)
+  for (const tool of [execCmd, readFile, writeFile, patchFile, listFiles, grep, confirm, session]) {
+    registry.register(tool)
+  }
 
   const engine = new QueryEngine(provider, registry, platform, shell, config)
 

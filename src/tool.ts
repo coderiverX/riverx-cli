@@ -2,11 +2,19 @@ import type { ToolDefinition } from './llm/provider.js'
 import type { PlatformInfo } from './utils/platform.js'
 import type { RiverXConfig } from './config/config.js'
 
+export interface SessionHandle {
+  getMessageCount(): number
+  getCwd(): string
+  getStartedAt(): Date
+  clear(): void
+}
+
 export interface ToolContext {
   cwd: string
   platform: PlatformInfo
   config: RiverXConfig
   abortSignal?: AbortSignal
+  session?: SessionHandle
 }
 
 export interface ToolResult {

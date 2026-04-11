@@ -2,7 +2,10 @@ import type { LLMProvider, ChatMessage, ToolCall } from './llm/provider.js'
 import type { PlatformInfo } from './utils/platform.js'
 import type { ShellInfo } from './utils/shell.js'
 import type { RiverXConfig } from './config/config.js'
+import type { SessionHandle } from './tool.js'
 import { ToolRegistry } from './tool.js'
+
+const MAX_ROUNDS = 10
 
 interface AggregatedToolCall {
   id: string
@@ -59,6 +62,8 @@ async function aggregateStream(
 }
 
 export class QueryEngine {
+  private readonly startedAt = new Date()
+
   constructor(
     private readonly provider: LLMProvider,
     private readonly registry: ToolRegistry,
@@ -66,6 +71,15 @@ export class QueryEngine {
     private readonly shell: ShellInfo,
     private readonly config: RiverXConfig,
   ) {}
+
+  private buildSessionHandle(messages: ChatMessage[]): SessionHandle {
+    return {
+      getMessageCount: () => messages.length,
+      getCwd: () => this.platform.cwd,
+      getStartedAt: () => this.startedAt,
+      clear: () => { messages.splice(0) },
+    }
+  }
 
   async run(
     userInput: string,
@@ -78,59 +92,56 @@ export class QueryEngine {
       { role: 'user', content: userInput },
     ]
     const tools = this.registry.toToolDefinitions()
-
-    // 第一次 LLM 调用
-    const firstStream = this.provider.chat({ messages, tools })
-    const { text: firstText, toolCalls } = await aggregateStream(firstStream)
-
-    // 无工具调用：直接输出
-    if (toolCalls.length === 0) {
-      onText?.(firstText)
-      return firstText
-    }
-
-    // 有工具调用：构建 assistant message
-    const assistantToolCalls: ToolCall[] = toolCalls.map(tc => ({
-      id: tc.id,
-      function: { name: tc.name, arguments: tc.arguments },
-    }))
-    messages.push({
-      role: 'assistant',
-      content: firstText || null,
-      tool_calls: assistantToolCalls,
-    })
-
-    // 并行执行工具
     const ctx = {
       cwd: this.platform.cwd,
       platform: this.platform,
       config: this.config,
       abortSignal,
+      session: this.buildSessionHandle(messages),
     }
 
-    const toolResults = await Promise.all(
-      toolCalls.map(async tc => {
-        let output: string
-        try {
-          const tool = this.registry.get(tc.name)
-          const args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>
-          const result = await tool.execute(args, ctx)
-          output = result.output
-        } catch (err) {
-          output = JSON.stringify({ error: err instanceof Error ? err.message : String(err) })
-        }
-        return { id: tc.id, output }
-      }),
-    )
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      if (abortSignal?.aborted) throw new Error('已中断')
 
-    for (const tr of toolResults) {
-      messages.push({ role: 'tool', content: tr.output, tool_call_id: tr.id })
+      const stream = this.provider.chat({ messages, tools })
+      const { text, toolCalls } = await aggregateStream(stream, onText)
+
+      if (toolCalls.length === 0) {
+        return text
+      }
+
+      // 有工具调用：构建 assistant message
+      const assistantToolCalls: ToolCall[] = toolCalls.map(tc => ({
+        id: tc.id,
+        function: { name: tc.name, arguments: tc.arguments },
+      }))
+      messages.push({
+        role: 'assistant',
+        content: text || null,
+        tool_calls: assistantToolCalls,
+      })
+
+      // 并行执行工具
+      const toolResults = await Promise.all(
+        toolCalls.map(async tc => {
+          let output: string
+          try {
+            const tool = this.registry.get(tc.name)
+            const args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>
+            const result = await tool.execute(args, ctx)
+            output = result.output
+          } catch (e) {
+            output = JSON.stringify({ error: e instanceof Error ? e.message : String(e) })
+          }
+          return { id: tc.id, output }
+        }),
+      )
+
+      for (const tr of toolResults) {
+        messages.push({ role: 'tool', content: tr.output, tool_call_id: tr.id })
+      }
     }
 
-    // 第二次 LLM 调用，流式输出给用户
-    const secondStream = this.provider.chat({ messages, tools })
-    const { text: finalText } = await aggregateStream(secondStream, onText)
-
-    return finalText
+    throw new Error(`工具调用超过最大轮次 (${MAX_ROUNDS})`)
   }
 }
