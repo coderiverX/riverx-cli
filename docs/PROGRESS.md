@@ -1,6 +1,6 @@
 # RiverX — 开发进度跟踪
 
-> 最后更新：2026-04-09（M0 全部完成）
+> 最后更新：2026-04-11（M1 核心工具完成）
 
 ---
 
@@ -127,74 +127,74 @@
 
 ### 1.1 read_file 工具 (`src/tools/read-file.ts`)
 
-- [ ] 参数定义：`path`(string), `offset`(number, optional), `limit`(number, optional)
-- [ ] 读取文件内容，返回带行号的文本
-- [ ] 支持 offset + limit 分页读取
-- [ ] 文件不存在时返回明确错误
-- [ ] 二进制文件检测，拒绝读取并提示
-- [ ] 大文件保护（超过 limit 默认值时截断）
-- [ ] 单元测试
+- [x] 参数定义：`path`(string), `offset`(number, optional), `limit`(number, optional)
+- [x] 读取文件内容，返回带行号的文本
+- [x] 支持 offset + limit 分页读取
+- [x] 文件不存在时返回明确错误
+- [x] 二进制文件检测，拒绝读取并提示
+- [x] 大文件保护（超过 limit 默认值时截断）
+- [x] 单元测试
 
 ### 1.2 write_file 工具 (`src/tools/write-file.ts`)
 
-- [ ] 参数定义：`path`(string), `content`(string)
-- [ ] 写入文件，自动创建父目录
-- [ ] 文件已存在时覆盖（LLM 应提前通过 confirm 征求同意）
-- [ ] 写入后返回文件路径和字节数
-- [ ] 路径安全检查（不允许写入 / 根目录等敏感位置）
-- [ ] 单元测试
+- [x] 参数定义：`path`(string), `content`(string)
+- [x] 写入文件，自动创建父目录
+- [x] 文件已存在时覆盖（LLM 应提前通过 confirm 征求同意）
+- [x] 写入后返回文件路径和字节数
+- [x] 路径安全检查（不允许写入 / 根目录等敏感位置）
+- [x] 单元测试
 
 ### 1.3 patch_file 工具 (`src/tools/patch-file.ts`)
 
-- [ ] 参数定义：`path`(string), `old_string`(string), `new_string`(string)
-- [ ] 读取文件 → 字符串替换 → 写回
-- [ ] old_string 未找到时返回错误
-- [ ] old_string 有多处匹配时返回错误（要求唯一匹配）
-- [ ] 替换后返回修改的行号范围
-- [ ] 单元测试
+- [x] 参数定义：`path`(string), `old_string`(string), `new_string`(string)
+- [x] 读取文件 → 字符串替换 → 写回
+- [x] old_string 未找到时返回错误
+- [x] old_string 有多处匹配时返回错误（要求唯一匹配）
+- [x] 替换后返回修改的行号范围
+- [x] 单元测试
 
 ### 1.4 list_files 工具 (`src/tools/list-files.ts`)
 
-- [ ] 参数定义：`path`(string, optional), `pattern`(string, optional, glob)
-- [ ] 默认列出 cwd 内容
-- [ ] 支持 glob 模式匹配（使用 fast-glob 或手写 minimatch）
-- [ ] 返回文件名 + 类型（file/dir/symlink）+ 大小
-- [ ] 结果数量限制（默认 200 条）
-- [ ] 单元测试
+- [x] 参数定义：`path`(string, optional), `pattern`(string, optional, glob)
+- [x] 默认列出 cwd 内容
+- [x] 支持 glob 模式匹配（使用 fast-glob 或手写 minimatch）
+- [x] 返回文件名 + 类型（file/dir/symlink）+ 大小
+- [x] 结果数量限制（默认 200 条）
+- [x] 单元测试
 
 ### 1.5 grep 工具 (`src/tools/grep.ts`)
 
-- [ ] 参数定义：`pattern`(string, regex), `path`(string, optional), `include`(string, optional, glob)
-- [ ] 在指定路径下递归搜索匹配内容
-- [ ] 返回匹配的文件路径 + 行号 + 行内容
-- [ ] 支持大小写不敏感选项
-- [ ] 结果数量限制
-- [ ] 使用 Node.js 原生实现（fs + readline），不依赖外部 rg/grep
-- [ ] 单元测试
+- [x] 参数定义：`pattern`(string, regex), `path`(string, optional), `include`(string, optional, glob)
+- [x] 在指定路径下递归搜索匹配内容
+- [x] 返回匹配的文件路径 + 行号 + 行内容
+- [x] 支持大小写不敏感选项
+- [x] 结果数量限制
+- [x] 使用 Node.js 原生实现（fs + readline），不依赖外部 rg/grep
+- [x] 单元测试
 
 ### 1.6 confirm 工具 (`src/tools/confirm.ts`)
 
-- [ ] 参数定义：`message`(string) — 展示给用户的确认信息
-- [ ] 在终端显示确认提示：`[RiverX] <message> (Y/n)`
-- [ ] 读取用户输入，返回 `{ confirmed: boolean }`
-- [ ] headless 模式下默认拒绝（安全优先）
-- [ ] 支持超时自动拒绝（默认 30s）
-- [ ] 单元测试（mock stdin）
+- [x] 参数定义：`message`(string) — 展示给用户的确认信息
+- [x] 在终端显示确认提示：`[RiverX] <message> (Y/n)`
+- [x] 读取用户输入，返回 `{ confirmed: boolean }`
+- [x] headless 模式下默认拒绝（安全优先）
+- [x] 支持超时自动拒绝（默认 30s）
+- [x] 单元测试（mock stdin）
 
 ### 1.7 session 工具 (`src/tools/session.ts`)
 
-- [ ] 参数定义：`action`(string: "info" | "clear")
-- [ ] `info`：返回当前会话信息（消息数、工作目录、运行时长）
-- [ ] `clear`：清空当前会话上下文
-- [ ] 单元测试
+- [x] 参数定义：`action`(string: "info" | "clear")
+- [x] `info`：返回当前会话信息（消息数、工作目录、运行时长）
+- [x] `clear`：清空当前会话上下文
+- [x] 单元测试
 
 ### 1.8 查询引擎 — 多轮 tool-use 循环
 
-- [ ] 支持 LLM 在一次响应中返回多个 tool_calls
-- [ ] 并行执行多个不相互依赖的工具调用
-- [ ] 将所有工具结果注回 messages，再次调用 LLM
-- [ ] 循环直到 LLM 返回纯文本（无 tool_calls）或达到最大轮次
-- [ ] 最大 tool-use 轮次限制（默认 20 轮）
+- [x] 支持 LLM 在一次响应中返回多个 tool_calls
+- [x] 并行执行多个不相互依赖的工具调用
+- [x] 将所有工具结果注回 messages，再次调用 LLM
+- [x] 循环直到 LLM 返回纯文本（无 tool_calls）或达到最大轮次
+- [x] 最大 tool-use 轮次限制（默认 10 轮）
 - [ ] 每轮工具执行前检查是否需要 confirm
 - [ ] 集成测试：多步骤任务（如"查找大文件并列出详情"）
 
@@ -374,7 +374,7 @@
 | 里程碑 | 任务数 | 状态 |
 |--------|--------|------|
 | M0 — 基础骨架 | 46 | ✅ 已完成 |
-| M1 — 核心工具 + 多轮 | 48 | 🔲 未开始 |
+| M1 — 核心工具 + 多轮 | 48 | 🔶 进行中 |
 | M2 — REPL 与会话 | 30 | 🔲 未开始 |
 | M3 — 打磨与发布 | 33 | 🔲 未开始 |
 | **合计** | **157** | |
