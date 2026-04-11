@@ -1,6 +1,6 @@
 # RiverX — 开发进度跟踪
 
-> 最后更新：2026-04-09（M0.1 + M0.2 + M0.3 + M0.4 + M0.5 已完成）
+> 最后更新：2026-04-09（M0 全部完成）
 
 ---
 
@@ -76,50 +76,50 @@
 
 ### 0.6 工具抽象 (`src/tool.ts`)
 
-- [ ] 定义 `Tool` 接口
+- [x] 定义 `Tool` 接口
   ```
   name, description, parameters(JSONSchema),
   execute(args, ctx) → ToolResult
   ```
-- [ ] 定义 `ToolContext` 类型（cwd, platform, config, abortSignal）
-- [ ] 定义 `ToolResult` 类型（success, output, error）
-- [ ] 实现工具注册表 `ToolRegistry`
-  - [ ] `register(tool: Tool)`
-  - [ ] `get(name: string): Tool`
-  - [ ] `list(): Tool[]`
-  - [ ] `toToolDefinitions(): ToolDefinition[]` — 生成传给 LLM 的 tools 参数
+- [x] 定义 `ToolContext` 类型（cwd, platform, config, abortSignal）
+- [x] 定义 `ToolResult` 类型（success, output, error）
+- [x] 实现工具注册表 `ToolRegistry`
+  - [x] `register(tool: Tool)`
+  - [x] `get(name: string): Tool`
+  - [x] `list(): Tool[]`
+  - [x] `toToolDefinitions(): ToolDefinition[]` — 生成传给 LLM 的 tools 参数
 
 ### 0.7 exec_cmd 工具 (`src/tools/exec-cmd.ts`)
 
-- [ ] 参数定义：`command`(string), `cwd`(string, optional), `timeout_ms`(number, optional)
-- [ ] 使用 `child_process.spawn` 执行命令
-- [ ] 通过用户默认 shell 执行（spawn(shell, ['-c', command])）
-- [ ] 捕获 stdout + stderr
-- [ ] 返回 `{ stdout, stderr, exit_code }`
-- [ ] 超时处理（kill 子进程，返回超时错误）
-- [ ] 输出截断（超长输出截取前后各 N 行，中间省略）
-- [ ] 基础安全检查：禁止列表中的命令直接拒绝
-- [ ] 单元测试：执行 `echo hello`、超时、非零退出码
+- [x] 参数定义：`command`(string), `cwd`(string, optional), `timeout_ms`(number, optional)
+- [x] 使用 `child_process.spawn` 执行命令
+- [x] 通过用户默认 shell 执行（spawn(shell, ['-c', command])）
+- [x] 捕获 stdout + stderr
+- [x] 返回 `{ stdout, stderr, exit_code }`（JSON 字符串）
+- [x] 超时处理（kill 子进程，返回超时错误）
+- [x] 输出截断（超过 200 行时保留前 100 + 后 100，中间省略）
+- [x] 基础安全检查：禁止列表中的命令直接拒绝
+- [x] 单元测试：执行 `echo hello`、超时、非零退出码、forbidden 命令
 
 ### 0.8 查询引擎 — 单轮 (`src/query-engine.ts`)
 
-- [ ] 定义 `QueryEngine` 类
-- [ ] 组装 system prompt（注入平台信息、cwd、用户名）
-- [ ] 将用户输入构造为 messages 数组
-- [ ] 将工具注册表转为 tools 参数
-- [ ] 调用 LLMProvider.chat() 获取流式响应
-- [ ] 聚合流式响应为完整 assistant message
-- [ ] 识别 tool_calls：解析 function name + arguments
-- [ ] 在 ToolRegistry 中查找并执行对应工具
-- [ ] 将工具结果构造为 tool role message
-- [ ] **单轮验证**：user → assistant(tool_call) → tool_result → assistant(text) → 输出
+- [x] 定义 `QueryEngine` 类
+- [x] 组装 system prompt（注入平台信息、cwd、用户名）
+- [x] 将用户输入构造为 messages 数组
+- [x] 将工具注册表转为 tools 参数
+- [x] 调用 LLMProvider.chat() 获取流式响应
+- [x] 聚合流式响应为完整 assistant message
+- [x] 识别 tool_calls：解析 function name + arguments
+- [x] 在 ToolRegistry 中查找并执行对应工具
+- [x] 将工具结果构造为 tool role message
+- [x] **单轮验证**：user → assistant(tool_call) → tool_result → assistant(text) → 输出
 
 ### 0.9 M0 端到端验证
 
-- [ ] `riverx "列出当前目录的文件"` 能正确调用 list_files 或 exec_cmd(ls)
-- [ ] `riverx "我是谁"` 能调用 exec_cmd(whoami) 并返回结果
-- [ ] API key 缺失时给出清晰报错
-- [ ] 不合法参数时显示 help
+- [x] `riverx "列出当前目录的文件"` 能正确调用 exec_cmd(ls)
+- [x] `riverx "我是谁"` 能调用 exec_cmd(whoami) 并返回结果
+- [x] API key 缺失时给出清晰报错
+- [x] 不合法参数时显示 help
 
 ---
 
@@ -373,7 +373,7 @@
 
 | 里程碑 | 任务数 | 状态 |
 |--------|--------|------|
-| M0 — 基础骨架 | 46 | 🔄 进行中（0.1 + 0.2 + 0.3 + 0.4 + 0.5 已完成） |
+| M0 — 基础骨架 | 46 | ✅ 已完成 |
 | M1 — 核心工具 + 多轮 | 48 | 🔲 未开始 |
 | M2 — REPL 与会话 | 30 | 🔲 未开始 |
 | M3 — 打磨与发布 | 33 | 🔲 未开始 |
