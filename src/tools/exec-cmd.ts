@@ -30,6 +30,7 @@ function isForbidden(command: string): boolean {
 
 export const execCmd: Tool = {
   name: 'exec_cmd',
+  confirmMode: 'always',
   description:
     '在当前系统上执行 shell 命令，返回 stdout、stderr 和退出码。' +
     '适用于文件操作、系统查询、程序执行等任务。',

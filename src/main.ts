@@ -38,6 +38,10 @@ riverx — 自然语言系统操作助手
   riverx "列出当前目录下最大的 10 个文件"
   riverx "查找所有包含 TODO 的 ts 文件"
   riverx "清理 /tmp 下超过 7 天的文件"
+  riverx --yes "删除 output 目录下所有临时文件"
+
+选项：
+  --yes              跳过所有确认提示（适用于脚本/自动化）
 `)
 }
 
@@ -111,6 +115,10 @@ async function main() {
   }
 
   const config = loadConfig()
+
+  if (args.includes('--yes')) {
+    config.security.auto_confirm = true
+  }
 
   if (args.includes('--config')) {
     printConfig(config)

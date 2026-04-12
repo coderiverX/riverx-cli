@@ -13,6 +13,7 @@ function err(message: string): ToolResult {
 
 export const writeFile: Tool = {
   name: 'write_file',
+  confirmMode: 'on-overwrite',
   description: '写入文件内容，自动创建父目录。文件已存在时覆盖。',
   parameters: {
     type: 'object',

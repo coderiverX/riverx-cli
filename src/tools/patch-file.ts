@@ -34,6 +34,7 @@ function findLineRange(
 
 export const patchFile: Tool = {
   name: 'patch_file',
+  confirmMode: 'on-overwrite',
   description:
     '在文件中将 old_string 替换为 new_string。old_string 必须在文件中唯一匹配，否则报错。',
   parameters: {

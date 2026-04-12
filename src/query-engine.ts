@@ -1,9 +1,12 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import type { LLMProvider, ChatMessage, ToolCall } from './llm/provider.js'
 import type { PlatformInfo } from './utils/platform.js'
 import type { ShellInfo } from './utils/shell.js'
 import type { RiverXConfig } from './config/config.js'
-import type { SessionHandle } from './tool.js'
+import type { Tool, SessionHandle } from './tool.js'
 import { ToolRegistry } from './tool.js'
+import { askConfirm } from './utils/confirm-prompt.js'
 
 const MAX_ROUNDS = 10
 
@@ -11,6 +14,29 @@ interface AggregatedToolCall {
   id: string
   name: string
   arguments: string
+}
+
+function buildArgSummary(name: string, args: Record<string, unknown>): string {
+  if (name === 'exec_cmd') {
+    const cmd = String(args['command'] ?? '')
+    return `exec_cmd: ${cmd.length > 80 ? cmd.slice(0, 80) + '…' : cmd}`
+  }
+  const filePath = args['path'] ?? args['file_path'] ?? ''
+  return `${name}: ${filePath}`
+}
+
+async function needsConfirm(
+  tool: Tool,
+  args: Record<string, unknown>,
+  cwd: string,
+  autoConfirm: boolean,
+): Promise<boolean> {
+  if (autoConfirm || !tool.confirmMode) return false
+  if (tool.confirmMode === 'always') return true
+  // on-overwrite: check if target file exists
+  const filePath = args['path'] as string | undefined
+  if (!filePath) return false
+  return fs.existsSync(path.resolve(cwd, filePath))
 }
 
 function buildSystemPrompt(platform: PlatformInfo, shell: ShellInfo): string {
@@ -121,21 +147,35 @@ export class QueryEngine {
         tool_calls: assistantToolCalls,
       })
 
-      // 并行执行工具
-      const toolResults = await Promise.all(
-        toolCalls.map(async tc => {
-          let output: string
-          try {
-            const tool = this.registry.get(tc.name)
-            const args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>
-            const result = await tool.execute(args, ctx)
-            output = result.output
-          } catch (e) {
-            output = JSON.stringify({ error: e instanceof Error ? e.message : String(e) })
+      // 串行执行工具（需要依次等待用户确认）
+      const autoConfirm = this.config.security.auto_confirm
+      const toolResults: { id: string; output: string }[] = []
+      for (const tc of toolCalls) {
+        let output: string
+        try {
+          const tool = this.registry.get(tc.name)
+          const args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>
+          const confirm = await needsConfirm(tool, args, ctx.cwd, autoConfirm)
+          if (confirm) {
+            if (!process.stdin.isTTY) {
+              output = JSON.stringify({ declined: true, reason: 'headless mode' })
+              toolResults.push({ id: tc.id, output })
+              continue
+            }
+            const approved = await askConfirm(buildArgSummary(tc.name, args))
+            if (!approved) {
+              output = JSON.stringify({ declined: true })
+              toolResults.push({ id: tc.id, output })
+              continue
+            }
           }
-          return { id: tc.id, output }
-        }),
-      )
+          const result = await tool.execute(args, ctx)
+          output = result.output
+        } catch (e) {
+          output = JSON.stringify({ error: e instanceof Error ? e.message : String(e) })
+        }
+        toolResults.push({ id: tc.id, output })
+      }
 
       for (const tr of toolResults) {
         messages.push({ role: 'tool', content: tr.output, tool_call_id: tr.id })

@@ -27,6 +27,7 @@ export interface Tool {
   name: string
   description: string
   parameters: Record<string, unknown>  // JSON Schema object
+  confirmMode?: 'always' | 'on-overwrite'
   execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult>
 }
 

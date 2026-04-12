@@ -13,6 +13,7 @@ export interface RiverXConfig {
     workspace_root: string
     auto_confirm_safe_commands: boolean
     confirm_medium_risk: boolean
+    auto_confirm: boolean
   }
   shell: {
     default: string
@@ -31,6 +32,7 @@ const DEFAULT_CONFIG: RiverXConfig = {
     workspace_root: 'cwd',
     auto_confirm_safe_commands: true,
     confirm_medium_risk: false,
+    auto_confirm: false,
   },
   shell: {
     default: 'auto',
