@@ -13,7 +13,11 @@ function makeShell() {
 }
 
 function makeConfig() {
-  return {} as never
+  return {
+    llm: { provider: 'qwen', model: 'qwen-plus', base_url: '', api_key: '' },
+    security: { workspace_root: 'cwd', auto_confirm_safe_commands: true, confirm_medium_risk: false, auto_confirm: true },
+    shell: { default: 'auto', timeout_ms: 5000 },
+  } as const
 }
 
 function makeProvider(rounds: Array<'text' | 'tool'>): LLMProvider {

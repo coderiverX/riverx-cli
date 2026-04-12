@@ -7,6 +7,13 @@ import type { RiverXConfig } from './config/config.js'
 import type { Tool, SessionHandle } from './tool.js'
 import { ToolRegistry } from './tool.js'
 import { askConfirm } from './utils/confirm-prompt.js'
+import {
+  classifyCommand,
+  checkCommandPermission,
+  checkPathPermission,
+  type ExecutionMode,
+} from './security/permissions.js'
+import type { ToolEvent } from './ui/stream-output.js'
 
 const MAX_ROUNDS = 10
 
@@ -30,7 +37,35 @@ async function needsConfirm(
   args: Record<string, unknown>,
   cwd: string,
   autoConfirm: boolean,
-): Promise<boolean> {
+  mode: ExecutionMode,
+  config: RiverXConfig,
+): Promise<boolean | 'deny'> {
+  // exec_cmd：按命令风险等级决策
+  if (tool.name === 'exec_cmd') {
+    const command = String(args['command'] ?? '')
+    const riskLevel = classifyCommand(command)
+    const result = checkCommandPermission(command, riskLevel, mode)
+    if (result === 'deny') return 'deny'
+    if (result === 'need_confirm') return !autoConfirm
+    return false  // allow
+  }
+
+  // write_file / patch_file：按路径权限决策
+  if (tool.name === 'write_file' || tool.name === 'patch_file') {
+    const filePath = args['path'] as string | undefined
+    if (filePath) {
+      const resolved = path.resolve(cwd, filePath)
+      const pathPerm = checkPathPermission(resolved, config.security.workspace_root)
+      if (pathPerm === 'forbidden') return 'deny'
+      if (pathPerm === 'outside') {
+        // workspace 外视为 high 风险
+        if (mode === 'headless') return 'deny'
+        return !autoConfirm
+      }
+    }
+  }
+
+  // 通用 confirmMode 逻辑
   if (autoConfirm || !tool.confirmMode) return false
   if (tool.confirmMode === 'always') return true
   // on-overwrite: check if target file exists
@@ -111,6 +146,7 @@ export class QueryEngine {
     userInput: string,
     onText?: (chunk: string) => void,
     abortSignal?: AbortSignal,
+    onToolEvent?: (event: ToolEvent) => void,
   ): Promise<string> {
     const systemPrompt = buildSystemPrompt(this.platform, this.shell)
     const messages: ChatMessage[] = [
@@ -125,6 +161,8 @@ export class QueryEngine {
       abortSignal,
       session: this.buildSessionHandle(messages),
     }
+
+    const mode: ExecutionMode = process.stdin.isTTY ? 'repl' : 'headless'
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       if (abortSignal?.aborted) throw new Error('已中断')
@@ -152,27 +190,47 @@ export class QueryEngine {
       const toolResults: { id: string; output: string }[] = []
       for (const tc of toolCalls) {
         let output: string
+        const summary = buildArgSummary(tc.name, JSON.parse(tc.arguments || '{}') as Record<string, unknown>)
         try {
           const tool = this.registry.get(tc.name)
           const args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>
-          const confirm = await needsConfirm(tool, args, ctx.cwd, autoConfirm)
-          if (confirm) {
+          const confirm = await needsConfirm(tool, args, ctx.cwd, autoConfirm, mode, this.config)
+
+          if (confirm === 'deny') {
+            output = JSON.stringify({ declined: true, reason: 'permission denied' })
+            toolResults.push({ id: tc.id, output })
+            continue
+          }
+
+          if (confirm === true) {
             if (!process.stdin.isTTY) {
               output = JSON.stringify({ declined: true, reason: 'headless mode' })
               toolResults.push({ id: tc.id, output })
               continue
             }
-            const approved = await askConfirm(buildArgSummary(tc.name, args))
+            const approved = await askConfirm(summary)
             if (!approved) {
               output = JSON.stringify({ declined: true })
               toolResults.push({ id: tc.id, output })
               continue
             }
           }
+
+          const startTime = Date.now()
+          onToolEvent?.({ type: 'tool_start', summary })
           const result = await tool.execute(args, ctx)
+          const elapsedMs = Date.now() - startTime
+
+          if (result.success) {
+            onToolEvent?.({ type: 'tool_done', summary, elapsedMs })
+          } else {
+            onToolEvent?.({ type: 'tool_error', summary, error: result.error ?? 'unknown error', elapsedMs })
+          }
           output = result.output
         } catch (e) {
-          output = JSON.stringify({ error: e instanceof Error ? e.message : String(e) })
+          const errMsg = e instanceof Error ? e.message : String(e)
+          onToolEvent?.({ type: 'tool_error', summary, error: errMsg, elapsedMs: 0 })
+          output = JSON.stringify({ error: errMsg })
         }
         toolResults.push({ id: tc.id, output })
       }

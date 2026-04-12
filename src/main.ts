@@ -18,6 +18,7 @@ import { grep } from './tools/grep.js'
 import { confirm } from './tools/confirm.js'
 import { session } from './tools/session.js'
 import { QueryEngine } from './query-engine.js'
+import { createStreamOutput } from './ui/stream-output.js'
 
 // ── 命令处理 ──────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,8 @@ async function runHeadless(prompt: string, config: RiverXConfig) {
     process.exit(130)
   })
 
-  await engine.run(prompt, chunk => process.stdout.write(chunk), ac.signal)
+  const out = createStreamOutput()
+  await engine.run(prompt, out.onText.bind(out), ac.signal, out.onToolEvent.bind(out))
   console.log()
 }
 
