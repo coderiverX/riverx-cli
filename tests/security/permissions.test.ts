@@ -16,6 +16,8 @@ describe('classifyCommand', () => {
   it('find (无 -delete) → safe', () => expect(classifyCommand('find . -name "*.ts"')).toBe('safe'))
 
   // medium
+  it('rm (无 -r) → medium', () => expect(classifyCommand('rm nginx.conf')).toBe('medium'))
+  it('rm -f → medium', () => expect(classifyCommand('rm -f file.txt')).toBe('medium'))
   it('mv → medium', () => expect(classifyCommand('mv a.txt b.txt')).toBe('medium'))
   it('mkdir → medium', () => expect(classifyCommand('mkdir -p /tmp/foo')).toBe('medium'))
   it('wget → medium', () => expect(classifyCommand('wget https://example.com/file')).toBe('medium'))

@@ -28,8 +28,9 @@ const HIGH_PATTERNS: RegExp[] = [
 ]
 
 const MEDIUM_PATTERNS: RegExp[] = [
+  /\brm\b/,                                                            // rm（含 -f，不含 -r，-r 已被 HIGH 先匹配）
   /\bmv\b/,
-  /\bcp\s+-[a-zA-Z]*r[a-zA-Z]*/i,                                    // cp -r
+  /\bcp\b/,                                                            // cp（含 -r，已被 HIGH 先匹配后不会到这里，但加上兜底）
   /\b(apt|apt-get|brew|yum|dnf)\s+(install|remove|purge)\b/i,
   /\b(pip|pip3|npm|yarn|pnpm)\s+install\b/,
   /\bcurl\b.*\s-[a-zA-Z]*o\b/,                                        // curl -o
@@ -37,7 +38,6 @@ const MEDIUM_PATTERNS: RegExp[] = [
   /\bssh\b/,
   /\bmkdir\b/,
   /\bchmod\b/,                                                         // chmod (不含 -R，已被 HIGH 先匹配)
-  /\bcp\b/,                                                            // cp (不含 -r)
 ]
 
 // ── 公开 API ──────────────────────────────────────────────────────────────────
