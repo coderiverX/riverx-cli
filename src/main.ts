@@ -3,10 +3,11 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import readline from 'node:readline'
 
 import { detectPlatform } from './utils/platform.js'
 import { detectShell } from './utils/shell.js'
-import { loadConfig, type RiverXConfig } from './config/config.js'
+import { loadConfig, saveConfig, type RiverXConfig } from './config/config.js'
 import { QwenProvider } from './llm/qwen.js'
 import { ToolRegistry } from './tool.js'
 import { execCmd } from './tools/exec-cmd.js'
@@ -19,6 +20,18 @@ import { confirm } from './tools/confirm.js'
 import { session } from './tools/session.js'
 import { QueryEngine } from './query-engine.js'
 import { createStreamOutput } from './ui/stream-output.js'
+import { Repl } from './repl/repl.js'
+import { cleanupOldLogs } from './utils/logger.js'
+
+// ── 工具注册 ──────────────────────────────────────────────────────────────────
+
+function buildRegistry(): ToolRegistry {
+  const registry = new ToolRegistry()
+  for (const tool of [execCmd, readFile, writeFile, patchFile, listFiles, grep, confirm, session]) {
+    registry.register(tool)
+  }
+  return registry
+}
 
 // ── 命令处理 ──────────────────────────────────────────────────────────────────
 
@@ -57,6 +70,34 @@ function printConfig(config: RiverXConfig) {
   console.log(JSON.stringify(config, null, 2))
 }
 
+// ── 首次运行向导 ──────────────────────────────────────────────────────────────
+
+async function runFirstRunWizard(config: RiverXConfig): Promise<string> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  const ask = (q: string) => new Promise<string>(resolve => rl.question(q, resolve))
+
+  process.stdout.write(
+    '\nriverx — 首次运行配置向导\n' +
+    '─────────────────────────\n' +
+    '检测到尚未配置 API Key。\n\n',
+  )
+
+  const apiKey = await ask('请输入 Qwen (通义千问) API Key: ')
+  rl.close()
+
+  const trimmed = apiKey.trim()
+  if (!trimmed) {
+    console.error('错误：API Key 不能为空，请重新运行配置。')
+    process.exit(1)
+  }
+
+  config.llm.api_key = trimmed
+  saveConfig(config)
+  process.stdout.write('配置已保存。\n\n')
+
+  return trimmed
+}
+
 // ── 执行路径 ──────────────────────────────────────────────────────────────────
 
 async function runHeadless(prompt: string, config: RiverXConfig) {
@@ -73,11 +114,7 @@ async function runHeadless(prompt: string, config: RiverXConfig) {
   const shell = detectShell()
 
   const provider = new QwenProvider(config.llm)
-  const registry = new ToolRegistry()
-  for (const tool of [execCmd, readFile, writeFile, patchFile, listFiles, grep, confirm, session]) {
-    registry.register(tool)
-  }
-
+  const registry = buildRegistry()
   const engine = new QueryEngine(provider, registry, platform, shell, config)
 
   const ac = new AbortController()
@@ -91,14 +128,27 @@ async function runHeadless(prompt: string, config: RiverXConfig) {
   console.log()
 }
 
-async function runRepl(_config: RiverXConfig) {
-  const { os: platform, username, cwd } = detectPlatform()
-  const { path: shellPath } = detectShell()
-  console.log(`riverx 0.1.0  |  ${platform}  ${shellPath}  用户：${username}`)
-  console.log(`工作目录：${cwd}`)
-  console.log()
-  console.log('REPL 交互模式尚未实现，将在 M2 完成。')
-  process.exit(0)
+async function runRepl(config: RiverXConfig) {
+  if (!config.llm.api_key) {
+    await runFirstRunWizard(config)
+  }
+
+  cleanupOldLogs()
+
+  const platform = detectPlatform()
+  const shell = detectShell()
+
+  let provider = new QwenProvider(config.llm)
+  let engine = new QueryEngine(provider, buildRegistry(), platform, shell, config)
+
+  const onModelChange = (model: string) => {
+    config.llm.model = model
+    provider = new QwenProvider(config.llm)
+    engine = new QueryEngine(provider, buildRegistry(), platform, shell, config)
+  }
+
+  const repl = new Repl(engine, config, onModelChange)
+  await repl.start()
 }
 
 // ── 主入口 ────────────────────────────────────────────────────────────────────

@@ -133,6 +133,11 @@ export class QueryEngine {
     private readonly config: RiverXConfig,
   ) {}
 
+  /** 创建含 system prompt 的初始会话消息数组，供 REPL 多轮对话使用 */
+  createConversation(): ChatMessage[] {
+    return [{ role: 'system', content: buildSystemPrompt(this.platform, this.shell) }]
+  }
+
   private buildSessionHandle(messages: ChatMessage[]): SessionHandle {
     return {
       getMessageCount: () => messages.length,
@@ -147,12 +152,19 @@ export class QueryEngine {
     onText?: (chunk: string) => void,
     abortSignal?: AbortSignal,
     onToolEvent?: (event: ToolEvent) => void,
+    conversationHistory?: ChatMessage[],
   ): Promise<string> {
-    const systemPrompt = buildSystemPrompt(this.platform, this.shell)
-    const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userInput },
-    ]
+    let messages: ChatMessage[]
+    if (conversationHistory) {
+      conversationHistory.push({ role: 'user', content: userInput })
+      messages = conversationHistory
+    } else {
+      const systemPrompt = buildSystemPrompt(this.platform, this.shell)
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userInput },
+      ]
+    }
     const tools = this.registry.toToolDefinitions()
     const ctx = {
       cwd: this.platform.cwd,
@@ -171,6 +183,7 @@ export class QueryEngine {
       const { text, toolCalls } = await aggregateStream(stream, onText)
 
       if (toolCalls.length === 0) {
+        conversationHistory?.push({ role: 'assistant', content: text })
         return text
       }
 

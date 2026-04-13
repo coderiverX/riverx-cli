@@ -56,6 +56,11 @@ function applyEnvOverrides(config: RiverXConfig): RiverXConfig {
   return config
 }
 
+export function saveConfig(config: RiverXConfig): void {
+  ensureConfigDir()
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8')
+}
+
 export function loadConfig(): RiverXConfig {
   ensureConfigDir()
 

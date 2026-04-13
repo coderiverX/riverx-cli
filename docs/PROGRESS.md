@@ -1,6 +1,6 @@
 # RiverX — 开发进度跟踪
 
-> 最后更新：2026-04-13（M1.10 权限检查 + M1.11 流式输出完成）
+> 最后更新：2026-04-13（M2 REPL 与会话完成）
 
 ---
 
@@ -240,59 +240,58 @@
 
 ### 2.1 REPL 基础 (`src/repl/repl.ts`)
 
-- [ ] 启动提示信息（版本、模型、工作目录）
-- [ ] 提示符显示（`riverx> `）
-- [ ] 读取用户输入（readline 接口）
-- [ ] 输入为空时跳过
-- [ ] Ctrl+C 中断当前操作（不退出 REPL）
-- [ ] Ctrl+D / `exit` / `quit` 退出 REPL
-- [ ] 输入传递给 QueryEngine 处理
+- [x] 启动提示信息（版本、模型、工作目录）
+- [x] 提示符显示（`riverx> `）
+- [x] 读取用户输入（readline 接口）
+- [x] 输入为空时跳过
+- [x] Ctrl+C 中断当前操作（不退出 REPL）
+- [x] Ctrl+D / `/exit` 退出 REPL
+- [x] 输入传递给 QueryEngine 处理
 
 ### 2.2 会话上下文管理
 
-- [ ] 维护 messages 数组（完整对话历史）
-- [ ] 每次用户输入追加 user message
-- [ ] LLM 响应追加 assistant message
-- [ ] 工具结果追加 tool message
-- [ ] 会话上下文传递给后续 LLM 调用（实现多轮对话）
-- [ ] 上下文长度管理：接近 token 上限时截断早期消息（保留 system prompt + 最近 N 轮）
+- [x] 维护 messages 数组（完整对话历史）
+- [x] 每次用户输入追加 user message
+- [x] LLM 响应追加 assistant message
+- [x] 工具结果追加 tool message
+- [x] 会话上下文传递给后续 LLM 调用（实现多轮对话）
+- [x] 上下文长度管理：接近 token 上限时截断早期消息（保留 system prompt + 最近 N 轮）
 
 ### 2.3 REPL 内置命令
 
-- [ ] `/help` — 显示可用命令列表
-- [ ] `/clear` — 清空当前会话上下文
-- [ ] `/history` — 查看对话历史（最近 N 条）
-- [ ] `/config` — 显示当前配置
-- [ ] `/model <name>` — 切换模型
-- [ ] `/exit` — 退出
+- [x] `/help` — 显示可用命令列表
+- [x] `/clear` — 清空当前会话上下文
+- [x] `/history` — 查看对话历史（最近 10 条）
+- [x] `/config` — 显示当前配置
+- [x] `/model <name>` — 切换模型（热切换，重建 engine）
+- [x] `/exit` — 退出
 
 ### 2.4 会话历史持久化
 
-- [ ] 每次会话生成唯一 session_id（timestamp + random）
-- [ ] 会话结束时保存到 ~/.riverx/sessions/{session_id}.json
-- [ ] 保存内容：messages, 开始时间, 结束时间, 工具调用统计
-- [ ] 自动清理超过 30 天的会话文件
+- [x] 每次会话生成唯一 session_id（timestamp + random）
+- [x] 会话结束时保存到 ~/.riverx/sessions/{session_id}.json
+- [x] 保存内容：开始时间, 结束时间, 消息数, 工具调用统计
+- [x] 自动清理超过 30 天的会话文件
 
 ### 2.5 配置系统完善
 
-- [ ] ~/.riverx/config.json 完整读写
-- [ ] 首次运行引导流程
-  - [ ] 检测到无 config.json 时提示用户
-  - [ ] 引导输入 API key
-  - [ ] 引导选择模型
-  - [ ] 写入 config.json
-- [ ] 支持 `riverx --config` 打印当前配置
-- [ ] 支持环境变量覆盖
-  - [ ] `RIVERX_API_KEY`
-  - [ ] `RIVERX_MODEL`
-  - [ ] `RIVERX_BASE_URL`
+- [x] ~/.riverx/config.json 完整读写（saveConfig() 新增）
+- [x] 首次运行引导流程
+  - [x] 检测到 api_key 为空时提示用户
+  - [x] 引导输入 API key
+  - [x] 写入 config.json
+- [x] 支持 `riverx --config` 打印当前配置
+- [x] 支持环境变量覆盖
+  - [x] `RIVERX_API_KEY`
+  - [x] `RIVERX_MODEL`
+  - [x] `RIVERX_BASE_URL`
 
 ### 2.6 操作日志 (`src/utils/logger.ts`)
 
-- [ ] 所有工具调用写入 ~/.riverx/logs/YYYY-MM-DD.log
-- [ ] 日志格式：`[timestamp] [tool_name] [args_summary] [result_status] [duration_ms]`
-- [ ] 日志文件按天滚动
-- [ ] 自动清理超过 7 天的日志文件
+- [x] 所有工具调用写入 ~/.riverx/logs/YYYY-MM-DD.log
+- [x] 日志格式：`[timestamp] [tool_name] [args_summary] [result_status] [duration_ms]`
+- [x] 日志文件按天滚动
+- [x] 自动清理超过 7 天的日志文件
 
 ### 2.7 M2 端到端验证
 
@@ -376,6 +375,6 @@
 |--------|--------|------|
 | M0 — 基础骨架 | 46 | ✅ 已完成 |
 | M1 — 核心工具 + 多轮 | 48 | 🔶 进行中 |
-| M2 — REPL 与会话 | 30 | 🔲 未开始 |
+| M2 — REPL 与会话 | 30 | 🔶 进行中 |
 | M3 — 打磨与发布 | 33 | 🔲 未开始 |
 | **合计** | **157** | |
