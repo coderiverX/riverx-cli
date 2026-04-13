@@ -15,7 +15,7 @@ import {
 } from './security/permissions.js'
 import type { ToolEvent } from './ui/stream-output.js'
 
-const MAX_ROUNDS = 10
+const MAX_ROUNDS = 30
 
 interface AggregatedToolCall {
   id: string
