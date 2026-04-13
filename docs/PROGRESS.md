@@ -1,6 +1,6 @@
 # RiverX — 开发进度跟踪
 
-> 最后更新：2026-04-12（M1 confirm 拦截完成）
+> 最后更新：2026-04-13（M1.10 权限检查 + M1.11 流式输出完成）
 
 ---
 
@@ -200,30 +200,31 @@
 
 ### 1.9 命令风险分类 (`src/security/risk-classifier.ts`)
 
-- [ ] 定义四级风险枚举：`safe`, `medium`, `high`, `forbidden`
-- [ ] 实现 `classifyCommand(cmd: string): RiskLevel`
-- [ ] 安全命令列表：ls, cat, head, tail, wc, pwd, echo, whoami, date, uname, df, du, ps, env, which, file, stat, id
-- [ ] 高危命令模式：rm -rf, chmod -R, chown -R, kill -9, sudo, dd, mkfs, fdisk
-- [ ] 禁止命令模式：格式化磁盘、>/dev/sda、修改 /etc/shadow、:(){ :|:& };:
-- [ ] 中等风险：不在安全和高危列表中的默认归类
+- [x] 定义四级风险枚举：`safe`, `medium`, `high`, `forbidden`（在 permissions.ts 中定义）
+- [x] 实现 `classifyCommand(cmd: string): RiskLevel`（在 permissions.ts 中实现）
+- [ ] 独立文件 `src/security/risk-classifier.ts`（当前与 permissions.ts 合并）
+- [ ] 安全命令白名单：ls, cat, head, tail, wc, pwd, echo, whoami, date, uname, df, du, ps, env, which, file, stat, id
+- [x] 高危命令模式：rm -r, chmod -R, chown -R, kill -9, sudo, dd, mkfs 等
+- [x] 禁止命令模式：格式化磁盘、>/dev/sda、:(){ :|:& };:
+- [ ] 中等风险：未命中白名单/高危列表时默认为 medium（当前默认为 safe）
 - [ ] 支持管道命令分析（`a | b` 取最高风险）
 - [ ] 支持 `&&` / `||` / `;` 链式命令分析
-- [ ] 单元测试：覆盖各类命令的风险判定
+- [x] 单元测试：覆盖各类命令的风险判定
 
 ### 1.10 权限检查 (`src/security/permissions.ts`)
 
-- [ ] `checkCommandPermission(cmd, riskLevel, mode)` → allow / deny / need_confirm
-- [ ] headless 模式：safe 自动执行，其余拒绝
-- [ ] REPL 模式：safe 自动执行，medium 显示后执行，high 触发 confirm，forbidden 拒绝
-- [ ] 路径检查：操作路径是否在 workspace_root 范围内
-- [ ] 单元测试
+- [x] `checkCommandPermission(cmd, riskLevel, mode)` → allow / deny / need_confirm
+- [x] headless 模式：safe 自动执行，其余拒绝
+- [x] REPL 模式：safe 自动执行，medium 显示后执行，high 触发 confirm，forbidden 拒绝
+- [x] 路径检查：操作路径是否在 workspace_root 范围内
+- [x] 单元测试
 
 ### 1.11 流式输出
 
-- [ ] headless 模式：LLM 文本内容实时逐 token 输出到 stdout
-- [ ] 工具执行时显示状态提示（⟳ 执行中: `ls -la`）
-- [ ] 工具执行完成显示结果摘要（✓ 完成，耗时 0.3s）
-- [ ] 工具执行失败显示错误信息（✗ 失败: command not found）
+- [x] headless 模式：LLM 文本内容实时逐 token 输出到 stdout
+- [x] 工具执行时显示状态提示（⟳ 执行中: `ls -la`）
+- [x] 工具执行完成显示结果摘要（✓ 完成，耗时 0.3s）
+- [x] 工具执行失败显示错误信息（✗ 失败: command not found）
 
 ### 1.12 M1 端到端验证
 
