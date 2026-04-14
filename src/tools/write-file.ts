@@ -34,6 +34,18 @@ export const writeFile: Tool = {
       return err(`禁止写入系统路径: ${resolved}`)
     }
 
+    // 磁盘空间预检：写前确认可用空间足够
+    const contentBytes = Buffer.byteLength(content, 'utf-8')
+    try {
+      const stats = await fsp.statfs(path.dirname(resolved))
+      const available = stats.bavail * stats.bsize
+      if (available < contentBytes) {
+        return err(`磁盘空间不足：文件需要 ${contentBytes} 字节，可用约 ${available} 字节`)
+      }
+    } catch {
+      // statfs 不可用时跳过检查，继续写入
+    }
+
     try {
       await fsp.mkdir(path.dirname(resolved), { recursive: true })
       await fsp.writeFile(resolved, content, 'utf-8')
