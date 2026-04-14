@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
@@ -58,5 +58,23 @@ describe('write_file', () => {
     const result = await writeFile.execute({ path: '/malicious.txt', content: 'x' }, makeCtx())
     expect(result.success).toBe(false)
     expect(result.output).toContain('禁止')
+  })
+
+  it('文件权限不足（EACCES）时返回明确提示', async () => {
+    vi.spyOn(fsp, 'writeFile').mockRejectedValueOnce(
+      Object.assign(new Error("EACCES: permission denied, open '/protected.txt'"), { code: 'EACCES' })
+    )
+    const result = await writeFile.execute({ path: 'protected.txt', content: 'x' }, makeCtx())
+    expect(result.success).toBe(false)
+    expect(result.output).toContain('权限不足')
+  })
+
+  it('文件被锁定（EPERM）时返回明确提示', async () => {
+    vi.spyOn(fsp, 'writeFile').mockRejectedValueOnce(
+      Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' })
+    )
+    const result = await writeFile.execute({ path: 'locked.txt', content: 'x' }, makeCtx())
+    expect(result.success).toBe(false)
+    expect(result.output).toContain('权限不足')
   })
 })

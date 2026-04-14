@@ -40,6 +40,10 @@ export const writeFile: Tool = {
       const bytes = Buffer.byteLength(content, 'utf-8')
       return ok({ path: resolved, bytes })
     } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      if (code === 'EACCES' || code === 'EPERM') {
+        return err(`权限不足，无法写入文件：${resolved}。请检查目录或文件的权限设置。`)
+      }
       const msg = e instanceof Error ? e.message : String(e)
       return err(`写入失败: ${msg}`)
     }
