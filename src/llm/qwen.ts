@@ -43,12 +43,21 @@ function buildMessages(messages: ChatMessage[]): OpenAI.ChatCompletionMessagePar
 }
 
 function convertError(err: unknown): Error {
+  // APIConnectionError 是 APIError 的子类，需先检查
+  if (err instanceof APIConnectionError) {
+    return new Error(
+      `Qwen API 连接失败：无法连接到 DashScope 服务。\n` +
+      `请检查网络连接和 base_url 配置，可稍后重试。\n` +
+      `若持续失败，请确认防火墙未拦截出站 HTTPS 请求。\n` +
+      `原始错误：${err.message}`,
+    )
+  }
   if (err instanceof APIError) {
     const status = err.status
     if (status === 401) {
       return new Error(
         `Qwen API 认证失败（401）：API Key 无效或已过期。\n` +
-        `请检查配置文件中的 api_key，或通过环境变量 RIVERX_API_KEY 设置。\n` +
+        `请检查 ~/.riverx/config.json 中的 api_key，或通过环境变量 RIVERX_API_KEY 设置。\n` +
         `原始错误：${err.message}`,
       )
     }
@@ -68,13 +77,6 @@ function convertError(err: unknown): Error {
     }
     return new Error(
       `Qwen API 错误（${status ?? '未知状态码'}）：${err.message}`,
-    )
-  }
-  if (err instanceof APIConnectionError) {
-    return new Error(
-      `Qwen API 连接失败：无法连接到 DashScope 服务。\n` +
-      `请检查网络连接和 base_url 配置。\n` +
-      `原始错误：${err.message}`,
     )
   }
   if (err instanceof Error) return err

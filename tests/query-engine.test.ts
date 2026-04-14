@@ -128,6 +128,35 @@ describe('QueryEngine 多轮循环', () => {
     await expect(engine.run('abort test', undefined, controller.signal)).rejects.toThrow('已中断')
   })
 
+  it('工具参数 JSON 格式异常时跳过该工具并报错给 LLM', async () => {
+    const registry = new ToolRegistry()
+    const tool = makeMockTool()
+    registry.register(tool)
+
+    let callCount = 0
+    const provider: LLMProvider = {
+      async *chat() {
+        callCount++
+        if (callCount === 1) {
+          yield {
+            type: 'tool_call',
+            index: 0,
+            id: 'tc_bad',
+            name: 'mock_tool',
+            argumentsDelta: '{invalid json',
+          } satisfies ChatChunk
+        } else {
+          yield { type: 'text', content: '参数格式有误，无法执行' } satisfies ChatChunk
+        }
+      },
+    }
+
+    const engine = new QueryEngine(provider, registry, makePlatform(), makeShell(), makeConfig())
+    const result = await engine.run('test malformed args')
+    expect(result).toBe('参数格式有误，无法执行')
+    expect(tool.execute).not.toHaveBeenCalled()
+  })
+
   it('超过 MAX_ROUNDS 抛出错误', async () => {
     const registry = new ToolRegistry()
     const tool = makeMockTool()
@@ -135,7 +164,7 @@ describe('QueryEngine 多轮循环', () => {
 
     // 始终返回工具调用，不返回文本
     const engine = new QueryEngine(
-      makeProvider(Array(12).fill('tool')),
+      makeProvider(Array(31).fill('tool')),
       registry,
       makePlatform(),
       makeShell(),

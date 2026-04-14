@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
@@ -58,5 +58,39 @@ describe('write_file', () => {
     const result = await writeFile.execute({ path: '/malicious.txt', content: 'x' }, makeCtx())
     expect(result.success).toBe(false)
     expect(result.output).toContain('禁止')
+  })
+
+  it('文件权限不足（EACCES）时返回明确提示', async () => {
+    vi.spyOn(fsp, 'writeFile').mockRejectedValueOnce(
+      Object.assign(new Error("EACCES: permission denied, open '/protected.txt'"), { code: 'EACCES' })
+    )
+    const result = await writeFile.execute({ path: 'protected.txt', content: 'x' }, makeCtx())
+    expect(result.success).toBe(false)
+    expect(result.output).toContain('权限不足')
+  })
+
+  it('文件被锁定（EPERM）时返回明确提示', async () => {
+    vi.spyOn(fsp, 'writeFile').mockRejectedValueOnce(
+      Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' })
+    )
+    const result = await writeFile.execute({ path: 'locked.txt', content: 'x' }, makeCtx())
+    expect(result.success).toBe(false)
+    expect(result.output).toContain('权限不足')
+  })
+
+  it('磁盘空间不足时在写入前返回错误', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(fsp, 'statfs').mockResolvedValueOnce({
+      type: 0, bsize: 4096, blocks: 100, bfree: 0, bavail: 0, files: 1000, ffree: 100,
+    } as any)
+    const result = await writeFile.execute({ path: 'data.txt', content: 'hello world' }, makeCtx())
+    expect(result.success).toBe(false)
+    expect(result.output).toContain('磁盘空间不足')
+  })
+
+  it('statfs 不可用时仍正常写入', async () => {
+    vi.spyOn(fsp, 'statfs').mockRejectedValueOnce(new Error('ENOSYS'))
+    const result = await writeFile.execute({ path: 'ok.txt', content: 'hello' }, makeCtx())
+    expect(result.success).toBe(true)
   })
 })

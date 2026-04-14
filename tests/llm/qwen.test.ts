@@ -133,6 +133,28 @@ describe('QwenProvider', () => {
       }).rejects.toThrow(expectedFragment)
     })
 
+    it('网络连接失败应抛出包含重试建议的 Error', async () => {
+      const { APIConnectionError } = await import('openai')
+      mockCreate.mockRejectedValueOnce(
+        new APIConnectionError({ message: 'connection refused' })
+      )
+      const provider = new QwenProvider(TEST_CONFIG)
+      await expect(async () => {
+        for await (const _ of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {}
+      }).rejects.toThrow('可稍后重试')
+    })
+
+    it('API Key 无效应提示配置文件路径', async () => {
+      const { APIError } = await import('openai')
+      mockCreate.mockRejectedValueOnce(
+        new APIError(401, { message: 'Unauthorized' }, 'Unauthorized', {})
+      )
+      const provider = new QwenProvider(TEST_CONFIG)
+      await expect(async () => {
+        for await (const _ of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {}
+      }).rejects.toThrow('~/.riverx/config.json')
+    })
+
     it('迭代中途的错误也被转换为中文上下文 Error', async () => {
       const { APIError } = await import('openai')
       async function* failMidStream() {
