@@ -203,10 +203,20 @@ export class QueryEngine {
       const toolResults: { id: string; output: string }[] = []
       for (const tc of toolCalls) {
         let output: string
-        const summary = buildArgSummary(tc.name, JSON.parse(tc.arguments || '{}') as Record<string, unknown>)
+
+        // 先解析参数，格式异常时降级：将错误报给 LLM 让其决策
+        let args: Record<string, unknown>
+        try {
+          args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>
+        } catch {
+          output = JSON.stringify({ error: `工具 "${tc.name}" 的参数 JSON 格式异常，已跳过` })
+          toolResults.push({ id: tc.id, output })
+          continue
+        }
+
+        const summary = buildArgSummary(tc.name, args)
         try {
           const tool = this.registry.get(tc.name)
-          const args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>
           const confirm = await needsConfirm(tool, args, ctx.cwd, autoConfirm, mode, this.config)
 
           if (confirm === 'deny') {
