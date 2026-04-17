@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import readline from 'node:readline'
+import chalk from 'chalk'
 
 import { detectPlatform } from './utils/platform.js'
 import { detectShell } from './utils/shell.js'
@@ -102,11 +103,11 @@ async function runFirstRunWizard(config: RiverXConfig): Promise<string> {
 
 async function runHeadless(prompt: string, config: RiverXConfig) {
   if (!config.llm.api_key) {
-    console.error(
+    console.error(chalk.red(
       '错误：未配置 API Key\n' +
       '请在 ~/.riverx/config.json 中设置 llm.api_key\n' +
       '或通过环境变量 RIVERX_API_KEY 设置',
-    )
+    ))
     process.exit(1)
   }
 
@@ -124,7 +125,7 @@ async function runHeadless(prompt: string, config: RiverXConfig) {
   })
 
   const out = createStreamOutput()
-  await engine.run(prompt, out.onText.bind(out), ac.signal, out.onToolEvent.bind(out))
+  await engine.run(prompt, out, ac.signal)
   console.log()
 }
 
@@ -187,6 +188,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('riverx 错误：', err instanceof Error ? err.message : err)
+  console.error(chalk.red('riverx 错误：' + (err instanceof Error ? err.message : String(err))))
   process.exit(1)
 })

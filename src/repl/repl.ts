@@ -2,7 +2,8 @@ import readline from 'node:readline'
 import type { ChatMessage } from '../llm/provider.js'
 import type { RiverXConfig } from '../config/config.js'
 import type { QueryEngine } from '../query-engine.js'
-import { createStreamOutput, type ToolEvent } from '../ui/stream-output.js'
+import { createStreamOutput } from '../ui/stream-output.js'
+import type { ToolEvent } from '../ui/stream-output.js'
 import { detectPlatform } from '../utils/platform.js'
 import { detectShell } from '../utils/shell.js'
 import { logToolCall } from '../utils/logger.js'
@@ -55,19 +56,13 @@ export class Repl {
     let currentAc: AbortController | null = null
 
     const streamOut = createStreamOutput()
-
-    const onToolEvent = (event: ToolEvent) => {
-      streamOut.onToolEvent(event)
+    const baseOnToolEvent = streamOut.onToolEvent.bind(streamOut)
+    streamOut.onToolEvent = (event: ToolEvent) => {
+      baseOnToolEvent(event)
       if (event.type === 'tool_done' || event.type === 'tool_error') {
-        // 从 summary 中提取 toolName（格式：toolName: args）
         const toolName = event.summary.split(':')[0].trim()
         toolCallStats[toolName] = (toolCallStats[toolName] ?? 0) + 1
-        logToolCall(
-          toolName,
-          event.summary,
-          event.type === 'tool_done',
-          event.elapsedMs,
-        )
+        logToolCall(toolName, event.summary, event.type === 'tool_done', event.elapsedMs)
       }
     }
 
@@ -165,7 +160,7 @@ export class Repl {
       rl.pause()
 
       this.engine
-        .run(line, streamOut.onText.bind(streamOut), ac.signal, onToolEvent, messages)
+        .run(line, streamOut, ac.signal, messages)
         .then(() => {
           process.stdout.write('\n')
         })
