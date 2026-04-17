@@ -59,12 +59,12 @@ describe('多轮对话 — 上下文保持', () => {
     const history = engine.createConversation()
 
     // 第一轮
-    await engine.run('你好', undefined, undefined, undefined, history)
+    await engine.run('你好', undefined, undefined, history)
     // system + user + assistant = 3
     expect(history.length).toBe(3)
 
     // 第二轮
-    await engine.run('帮我记住：今天天气很好', undefined, undefined, undefined, history)
+    await engine.run('帮我记住：今天天气很好', undefined, undefined, history)
     // +2 (user + assistant) = 5
     expect(history.length).toBe(5)
   })
@@ -74,8 +74,8 @@ describe('多轮对话 — 上下文保持', () => {
     const engine = makeEngine(provider)
     const history = engine.createConversation()
 
-    await engine.run('你叫什么名字？', undefined, undefined, undefined, history)
-    await engine.run('回顾一下我们的对话', undefined, undefined, undefined, history)
+    await engine.run('你叫什么名字？', undefined, undefined, history)
+    await engine.run('回顾一下我们的对话', undefined, undefined, history)
 
     // 第二轮的 user message 应该能在 history 中找到
     const userMessages = history.filter(m => m.role === 'user')
@@ -172,14 +172,14 @@ describe('/clear 后上下文重置', () => {
     const engine = makeEngine(provider)
     const history = engine.createConversation()
 
-    await engine.run('第一个问题', undefined, undefined, undefined, history)
+    await engine.run('第一个问题', undefined, undefined, history)
     expect(history.length).toBe(3)
 
     // 模拟 /clear
     history.splice(1)
     expect(history.length).toBe(1)
 
-    await engine.run('新的问题', undefined, undefined, undefined, history)
+    await engine.run('新的问题', undefined, undefined, history)
     // system + user + assistant = 3，无历史积累
     expect(history.length).toBe(3)
     const userMessages = history.filter(m => m.role === 'user')
