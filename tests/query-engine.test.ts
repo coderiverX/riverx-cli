@@ -63,7 +63,10 @@ describe('QueryEngine 多轮循环', () => {
       makeConfig(),
     )
     const chunks: string[] = []
-    const result = await engine.run('hello', chunk => chunks.push(chunk))
+    const result = await engine.run('hello', {
+      onText: chunk => chunks.push(chunk),
+      onToolEvent: () => {},
+    })
     expect(result).toBe('done')
     expect(chunks).toEqual(['done'])
   })

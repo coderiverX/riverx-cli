@@ -13,7 +13,7 @@ import {
   checkPathPermission,
   type ExecutionMode,
 } from './security/permissions.js'
-import type { ToolEvent } from './ui/stream-output.js'
+import type { StreamOutput, ToolEvent } from './ui/stream-output.js'
 
 const MAX_ROUNDS = 30
 
@@ -149,9 +149,8 @@ export class QueryEngine {
 
   async run(
     userInput: string,
-    onText?: (chunk: string) => void,
+    output?: StreamOutput,
     abortSignal?: AbortSignal,
-    onToolEvent?: (event: ToolEvent) => void,
     conversationHistory?: ChatMessage[],
   ): Promise<string> {
     let messages: ChatMessage[]
@@ -179,8 +178,13 @@ export class QueryEngine {
     for (let round = 0; round < MAX_ROUNDS; round++) {
       if (abortSignal?.aborted) throw new Error('已中断')
 
+      output?.onLLMStart?.()
       const stream = this.provider.chat({ messages, tools })
-      const { text, toolCalls } = await aggregateStream(stream, onText)
+      const { text, toolCalls } = await aggregateStream(
+        stream,
+        output ? (chunk) => output.onText(chunk) : undefined,
+      )
+      output?.onLLMEnd?.()
 
       if (toolCalls.length === 0) {
         conversationHistory?.push({ role: 'assistant', content: text })
@@ -240,19 +244,19 @@ export class QueryEngine {
           }
 
           const startTime = Date.now()
-          onToolEvent?.({ type: 'tool_start', summary })
+          output?.onToolEvent({ type: 'tool_start', summary })
           const result = await tool.execute(args, ctx)
           const elapsedMs = Date.now() - startTime
 
           if (result.success) {
-            onToolEvent?.({ type: 'tool_done', summary, elapsedMs })
+            output?.onToolEvent({ type: 'tool_done', summary, elapsedMs })
           } else {
-            onToolEvent?.({ type: 'tool_error', summary, error: result.error ?? 'unknown error', elapsedMs })
+            output?.onToolEvent({ type: 'tool_error', summary, error: result.error ?? 'unknown error', elapsedMs })
           }
           output = result.output
         } catch (e) {
           const errMsg = e instanceof Error ? e.message : String(e)
-          onToolEvent?.({ type: 'tool_error', summary, error: errMsg, elapsedMs: 0 })
+          output?.onToolEvent({ type: 'tool_error', summary, error: errMsg, elapsedMs: 0 })
           output = JSON.stringify({ error: errMsg })
         }
         toolResults.push({ id: tc.id, output })
