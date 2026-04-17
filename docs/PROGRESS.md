@@ -228,11 +228,11 @@
 
 ### 1.12 M1 端到端验证
 
-- [ ] `riverx "查看 /tmp 下最大的 5 个文件并显示它们的内容前 10 行"` — 多轮工具调用
-- [ ] `riverx "创建一个名为 test.txt 的文件，写入 hello world"` — write_file 工具
-- [ ] `riverx "在当前目录搜索包含 TODO 的文件"` — grep 工具
-- [ ] 高危命令触发确认流程
-- [ ] 禁止命令被拦截
+- [x] `riverx "查看 /tmp 下最大的 5 个文件并显示它们的内容前 10 行"` — 多轮工具调用
+- [x] `riverx "创建一个名为 test.txt 的文件，写入 hello world"` — write_file 工具
+- [x] `riverx "在当前目录搜索包含 TODO 的文件"` — grep 工具
+- [x] 高危命令触发确认流程
+- [x] 禁止命令被拦截
 
 ---
 
