@@ -206,15 +206,15 @@ export class QueryEngine {
       const autoConfirm = this.config.security.auto_confirm
       const toolResults: { id: string; output: string }[] = []
       for (const tc of toolCalls) {
-        let output: string
+        let toolOutput: string
 
         // 先解析参数，格式异常时降级：将错误报给 LLM 让其决策
         let args: Record<string, unknown>
         try {
           args = JSON.parse(tc.arguments || '{}') as Record<string, unknown>
         } catch {
-          output = JSON.stringify({ error: `工具 "${tc.name}" 的参数 JSON 格式异常，已跳过` })
-          toolResults.push({ id: tc.id, output })
+          toolOutput = JSON.stringify({ error: `工具 "${tc.name}" 的参数 JSON 格式异常，已跳过` })
+          toolResults.push({ id: tc.id, output: toolOutput })
           continue
         }
 
@@ -224,21 +224,21 @@ export class QueryEngine {
           const confirm = await needsConfirm(tool, args, ctx.cwd, autoConfirm, mode, this.config)
 
           if (confirm === 'deny') {
-            output = JSON.stringify({ declined: true, reason: 'permission denied' })
-            toolResults.push({ id: tc.id, output })
+            toolOutput = JSON.stringify({ declined: true, reason: 'permission denied' })
+            toolResults.push({ id: tc.id, output: toolOutput })
             continue
           }
 
           if (confirm === true) {
             if (!process.stdin.isTTY) {
-              output = JSON.stringify({ declined: true, reason: 'headless mode' })
-              toolResults.push({ id: tc.id, output })
+              toolOutput = JSON.stringify({ declined: true, reason: 'headless mode' })
+              toolResults.push({ id: tc.id, output: toolOutput })
               continue
             }
             const approved = await askConfirm(summary)
             if (!approved) {
-              output = JSON.stringify({ declined: true })
-              toolResults.push({ id: tc.id, output })
+              toolOutput = JSON.stringify({ declined: true })
+              toolResults.push({ id: tc.id, output: toolOutput })
               continue
             }
           }
@@ -253,13 +253,13 @@ export class QueryEngine {
           } else {
             output?.onToolEvent({ type: 'tool_error', summary, error: result.error ?? 'unknown error', elapsedMs })
           }
-          output = result.output
+          toolOutput = result.output
         } catch (e) {
           const errMsg = e instanceof Error ? e.message : String(e)
           output?.onToolEvent({ type: 'tool_error', summary, error: errMsg, elapsedMs: 0 })
-          output = JSON.stringify({ error: errMsg })
+          toolOutput = JSON.stringify({ error: errMsg })
         }
-        toolResults.push({ id: tc.id, output })
+        toolResults.push({ id: tc.id, output: toolOutput })
       }
 
       for (const tr of toolResults) {
