@@ -46,7 +46,12 @@ export function createStreamOutput(): StreamOutput {
     onLLMStart() {
       stopToolSpinner()
       buffer = ''
-      llmSpinner = ora({ text: '思考中...', stream: process.stderr }).start()
+      llmSpinner = ora({
+        text: '思考中...',
+        stream: process.stderr,
+        // 不拦截 stdin：ora 默认会 setRawMode(false) 退出 raw，会破坏主 REPL readline
+        discardStdin: false,
+      }).start()
     },
 
     onText(chunk: string) {
@@ -68,6 +73,7 @@ export function createStreamOutput(): StreamOutput {
           toolSpinner = ora({
             text: chalk.yellow(`执行: ${event.summary}`),
             stream: process.stderr,
+            discardStdin: false,
           }).start()
           break
 
