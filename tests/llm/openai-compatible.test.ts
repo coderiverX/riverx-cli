@@ -17,13 +17,15 @@ vi.mock('openai', async importOriginal => {
   }
 })
 
-import { QwenProvider } from '../../src/llm/qwen.js'
+import { OpenAICompatibleProvider } from '../../src/llm/openai-compatible.js'
+import { PROVIDER_PRESETS, type ProviderName } from '../../src/llm/presets.js'
 
-const TEST_CONFIG = {
-  provider: 'qwen',
-  model: 'qwen-plus',
-  base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  api_key: 'test-key',
+function makeProvider(name: ProviderName = 'qwen') {
+  const preset = PROVIDER_PRESETS[name]
+  return new OpenAICompatibleProvider(
+    { provider: name, api_key: 'test-key', model: preset.default_model, base_url: preset.base_url },
+    preset,
+  )
 }
 
 async function* makeTextStream(chunks: string[]) {
@@ -56,7 +58,7 @@ async function* makeToolCallStream() {
   }
 }
 
-describe('QwenProvider', () => {
+describe('OpenAICompatibleProvider', () => {
   beforeEach(() => {
     mockCreate.mockReset()
   })
@@ -65,7 +67,7 @@ describe('QwenProvider', () => {
     it('将 delta.content 转换为 TextChunk 序列', async () => {
       mockCreate.mockResolvedValueOnce(makeTextStream(['Hello', ', ', 'world']))
 
-      const provider = new QwenProvider(TEST_CONFIG)
+      const provider = makeProvider()
       const chunks: string[] = []
 
       for await (const chunk of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {
@@ -83,7 +85,7 @@ describe('QwenProvider', () => {
       }
       mockCreate.mockResolvedValueOnce(mixedStream())
 
-      const provider = new QwenProvider(TEST_CONFIG)
+      const provider = makeProvider()
       const chunks: string[] = []
 
       for await (const chunk of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {
@@ -98,7 +100,7 @@ describe('QwenProvider', () => {
     it('按 index 分发 tool_call chunk，增量可拼接为完整参数', async () => {
       mockCreate.mockResolvedValueOnce(makeToolCallStream())
 
-      const provider = new QwenProvider(TEST_CONFIG)
+      const provider = makeProvider()
       const tcChunks: Array<{ index: number; id?: string; name?: string; argumentsDelta: string }> = []
 
       for await (const chunk of provider.chat({ messages: [{ role: 'user', content: 'list' }] })) {
@@ -114,7 +116,25 @@ describe('QwenProvider', () => {
     })
   })
 
-  describe('API 错误处理', () => {
+  describe('API 错误处理（多 provider 文案）', () => {
+    it.each(['openai', 'deepseek', 'kimi', 'qwen'] as const)(
+      '%s 的错误消息包含 display_name',
+      async name => {
+        const { APIError } = await import('openai')
+        mockCreate.mockRejectedValueOnce(
+          new APIError(500, { message: 'boom' }, 'boom', {}),
+        )
+        const provider = makeProvider(name)
+        const displayName = PROVIDER_PRESETS[name].display_name
+
+        await expect(async () => {
+          for await (const _ of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {
+            // drain
+          }
+        }).rejects.toThrow(displayName)
+      },
+    )
+
     it.each([
       [401, 'API Key 无效或已过期'],
       [429, '请求过于频繁'],
@@ -125,7 +145,7 @@ describe('QwenProvider', () => {
         new APIError(status, { message: 'api error' }, 'api error', {}),
       )
 
-      const provider = new QwenProvider(TEST_CONFIG)
+      const provider = makeProvider()
       await expect(async () => {
         for await (const _ of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {
           // drain
@@ -138,7 +158,7 @@ describe('QwenProvider', () => {
       mockCreate.mockRejectedValueOnce(
         new APIConnectionError({ message: 'connection refused' })
       )
-      const provider = new QwenProvider(TEST_CONFIG)
+      const provider = makeProvider()
       await expect(async () => {
         for await (const _ of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {}
       }).rejects.toThrow('可稍后重试')
@@ -149,7 +169,7 @@ describe('QwenProvider', () => {
       mockCreate.mockRejectedValueOnce(
         new APIError(401, { message: 'Unauthorized' }, 'Unauthorized', {})
       )
-      const provider = new QwenProvider(TEST_CONFIG)
+      const provider = makeProvider()
       await expect(async () => {
         for await (const _ of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {}
       }).rejects.toThrow('~/.riverx/config.json')
@@ -163,7 +183,7 @@ describe('QwenProvider', () => {
       }
       mockCreate.mockResolvedValueOnce(failMidStream())
 
-      const provider = new QwenProvider(TEST_CONFIG)
+      const provider = makeProvider()
       const collected: string[] = []
 
       await expect(async () => {
@@ -173,6 +193,37 @@ describe('QwenProvider', () => {
       }).rejects.toThrow('服务端返回错误')
 
       expect(collected).toEqual(['start'])
+    })
+  })
+
+  describe('base_url / model 回退到预设', () => {
+    it('config.base_url 未设置时使用预设', async () => {
+      mockCreate.mockResolvedValueOnce(makeTextStream(['ok']))
+      const preset = PROVIDER_PRESETS.openai
+      const provider = new OpenAICompatibleProvider(
+        { provider: 'openai', api_key: 'k' },
+        preset,
+      )
+      for await (const _ of provider.chat({ messages: [{ role: 'user', content: 'hi' }] })) {}
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ model: preset.default_model }),
+      )
+    })
+
+    it('params.model > config.model > preset.default_model', async () => {
+      mockCreate.mockResolvedValueOnce(makeTextStream(['ok']))
+      const preset = PROVIDER_PRESETS.openai
+      const provider = new OpenAICompatibleProvider(
+        { provider: 'openai', api_key: 'k', model: 'from-config' },
+        preset,
+      )
+      for await (const _ of provider.chat({
+        messages: [{ role: 'user', content: 'hi' }],
+        model: 'from-params',
+      })) {}
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ model: 'from-params' }),
+      )
     })
   })
 })
