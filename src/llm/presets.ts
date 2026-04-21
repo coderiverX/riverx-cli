@@ -9,6 +9,8 @@ export interface ProviderPreset {
   display_name: string
   /** 供应商约定的 API Key 环境变量名（RIVERX_API_KEY 未设置时回退） */
   api_key_env: string
+  /** 默认使用的线上协议（未设置则为 'chat'） */
+  wire_api?: 'chat' | 'responses'
 }
 
 export const PROVIDER_PRESETS: Record<ProviderName, ProviderPreset> = {

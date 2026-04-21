@@ -16,6 +16,7 @@ vi.mock('openai', async importOriginal => {
 
 import { createProvider, resolvePreset } from '../../src/llm/factory.js'
 import { OpenAICompatibleProvider } from '../../src/llm/openai-compatible.js'
+import { OpenAIResponsesProvider } from '../../src/llm/openai-responses.js'
 
 describe('createProvider', () => {
   it.each([
@@ -59,5 +60,22 @@ describe('resolvePreset', () => {
 
   it('未知 provider 返回 undefined', () => {
     expect(resolvePreset({ provider: 'gemini', api_key: 'k' })).toBeUndefined()
+  })
+})
+
+describe('createProvider — wire_api 选择', () => {
+  it('wire_api 默认为 chat，返回 OpenAICompatibleProvider', () => {
+    const p = createProvider({ provider: 'openai', api_key: 'k' })
+    expect(p).toBeInstanceOf(OpenAICompatibleProvider)
+  })
+
+  it('wire_api = "responses" 返回 OpenAIResponsesProvider', () => {
+    const p = createProvider({ provider: 'openai', api_key: 'k', wire_api: 'responses' })
+    expect(p).toBeInstanceOf(OpenAIResponsesProvider)
+  })
+
+  it('wire_api = "chat" 显式也返回 OpenAICompatibleProvider', () => {
+    const p = createProvider({ provider: 'qwen', api_key: 'k', wire_api: 'chat' })
+    expect(p).toBeInstanceOf(OpenAICompatibleProvider)
   })
 })

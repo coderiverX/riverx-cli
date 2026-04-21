@@ -11,6 +11,13 @@ export interface RiverXConfig {
     /** 可选；未设置时回退到对应 provider 预设的 base_url */
     base_url?: string
     api_key: string
+    /**
+     * 使用的线上协议：
+     * - 'chat'（默认）：OpenAI Chat Completions（`/v1/chat/completions`）
+     * - 'responses'   ：OpenAI Responses API（`/v1/responses`），用于 gpt-5-codex 等
+     * 未设置时回退到 provider 预设的 wire_api（默认 'chat'）。
+     */
+    wire_api?: 'chat' | 'responses'
   }
   security: {
     workspace_root: string
