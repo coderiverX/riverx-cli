@@ -28,12 +28,32 @@ function isForbidden(command: string): boolean {
   return FORBIDDEN_PATTERNS.some(re => re.test(command))
 }
 
+function killGroup(pid: number | undefined, signal: NodeJS.Signals): void {
+  if (pid === undefined) return
+  try {
+    process.kill(-pid, signal)
+  } catch {
+    // ESRCH: 进程组已退出；EPERM: 无权限——都忽略
+  }
+}
+
+function summarizeCommand(command: string, max = 80): string {
+  const oneLine = command.replace(/\s+/g, ' ').trim()
+  return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine
+}
+
+function looksForegroundDaemon(command: string): boolean {
+  return /daemon\s+off|-D FOREGROUND|\btail\s+-f\b/.test(command)
+}
+
 export const execCmd: Tool = {
   name: 'exec_cmd',
   confirmMode: 'always',
   description:
     '在当前系统上执行 shell 命令，返回 stdout、stderr 和退出码。' +
-    '适用于文件操作、系统查询、程序执行等任务。',
+    '适用于文件操作、系统查询、程序执行等任务。' +
+    '注意：此工具同步执行、有超时限制，不适合前台长驻进程（如 `nginx -g "daemon off;"`、' +
+    '`tail -f`、开发服务器）。启动服务请使用守护化方式（`nginx`、`brew services start`、`nohup ... &`）。',
   parameters: {
     type: 'object',
     properties: {
@@ -72,28 +92,39 @@ export const execCmd: Tool = {
       const stdoutChunks: Buffer[] = []
       const stderrChunks: Buffer[] = []
       let timedOut = false
+      let aborted = false
 
+      // detached: true 让 shell 成为新进程组的 leader，kill(-pid) 可以递归杀掉所有子孙
       const proc = spawn(shell, ['-c', command], {
         cwd,
         env: process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
       })
 
       proc.stdout.on('data', (chunk: Buffer) => { stdoutChunks.push(chunk) })
       proc.stderr.on('data', (chunk: Buffer) => { stderrChunks.push(chunk) })
 
+      const escalate = () => {
+        setTimeout(() => {
+          if (proc.exitCode === null && proc.signalCode === null) {
+            killGroup(proc.pid, 'SIGKILL')
+          }
+        }, 800)
+      }
+
       const timer = setTimeout(() => {
         timedOut = true
-        proc.kill('SIGTERM')
-        setTimeout(() => {
-          if (!proc.killed) proc.kill('SIGKILL')
-        }, 200)
+        killGroup(proc.pid, 'SIGTERM')
+        escalate()
       }, timeoutMs)
 
       if (ctx.abortSignal) {
         ctx.abortSignal.addEventListener('abort', () => {
+          aborted = true
           clearTimeout(timer)
-          proc.kill('SIGTERM')
+          killGroup(proc.pid, 'SIGTERM')
+          escalate()
         }, { once: true })
       }
 
@@ -101,11 +132,30 @@ export const execCmd: Tool = {
         clearTimeout(timer)
 
         if (timedOut) {
+          const summary = summarizeCommand(command)
+          const hint = looksForegroundDaemon(command)
+            ? '\n提示：该命令似乎是前台长驻进程。若需启动服务，请去掉 `-g "daemon off;"`，或以后台方式运行（nohup / & / brew services）。'
+            : ''
           const output = JSON.stringify({
             error: `timeout after ${timeoutMs}ms`,
+            command: summary,
             exit_code: -1,
           })
-          resolve({ success: false, output, error: `命令超时（${timeoutMs}ms）` })
+          resolve({
+            success: false,
+            output,
+            error: `命令超时（${timeoutMs}ms）：${summary}${hint}`,
+          })
+          return
+        }
+
+        if (aborted) {
+          const output = JSON.stringify({
+            error: 'aborted by user',
+            command: summarizeCommand(command),
+            exit_code: -1,
+          })
+          resolve({ success: false, output, error: '命令被用户中断' })
           return
         }
 
