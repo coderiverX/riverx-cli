@@ -3,13 +3,13 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import readline from 'node:readline'
 import chalk from 'chalk'
 
 import { detectPlatform } from './utils/platform.js'
 import { detectShell } from './utils/shell.js'
-import { loadConfig, saveConfig, type RiverXConfig } from './config/config.js'
-import { createProvider, resolvePreset } from './llm/factory.js'
+import { loadConfig, type RiverXConfig } from './config/config.js'
+import { runFirstRunWizard } from './config/first-run-wizard.js'
+import { createProvider } from './llm/factory.js'
 import { ToolRegistry } from './tool.js'
 import { execCmd } from './tools/exec-cmd.js'
 import { readFile } from './tools/read-file.js'
@@ -71,41 +71,12 @@ function printConfig(config: RiverXConfig) {
   console.log(JSON.stringify(config, null, 2))
 }
 
-// ── 首次运行向导 ──────────────────────────────────────────────────────────────
+// ── 首次运行判断 ──────────────────────────────────────────────────────────────
 
-async function runFirstRunWizard(config: RiverXConfig): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-  const ask = (q: string) => new Promise<string>(resolve => rl.question(q, resolve))
+async function ensureConfigured(config: RiverXConfig): Promise<void> {
+  if (config.llm.api_key) return
 
-  const preset = resolvePreset(config.llm)
-  const providerLabel = preset?.display_name ?? config.llm.provider
-
-  process.stdout.write(
-    '\nriverx — 首次运行配置向导\n' +
-    '─────────────────────────\n' +
-    `检测到尚未配置 API Key。当前 provider：${providerLabel}\n\n`,
-  )
-
-  const apiKey = await ask(`请输入 ${providerLabel} API Key: `)
-  rl.close()
-
-  const trimmed = apiKey.trim()
-  if (!trimmed) {
-    console.error('错误：API Key 不能为空，请重新运行配置。')
-    process.exit(1)
-  }
-
-  config.llm.api_key = trimmed
-  saveConfig(config)
-  process.stdout.write('配置已保存。\n\n')
-
-  return trimmed
-}
-
-// ── 执行路径 ──────────────────────────────────────────────────────────────────
-
-async function runHeadless(prompt: string, config: RiverXConfig) {
-  if (!config.llm.api_key) {
+  if (!process.stdin.isTTY) {
     console.error(chalk.red(
       '错误：未配置 API Key\n' +
       '请在 ~/.riverx/config.json 中设置 llm.api_key\n' +
@@ -113,6 +84,14 @@ async function runHeadless(prompt: string, config: RiverXConfig) {
     ))
     process.exit(1)
   }
+
+  await runFirstRunWizard(config)
+}
+
+// ── 执行路径 ──────────────────────────────────────────────────────────────────
+
+async function runHeadless(prompt: string, config: RiverXConfig) {
+  await ensureConfigured(config)
 
   const platform = detectPlatform()
   const shell = detectShell()
@@ -133,9 +112,7 @@ async function runHeadless(prompt: string, config: RiverXConfig) {
 }
 
 async function runRepl(config: RiverXConfig) {
-  if (!config.llm.api_key) {
-    await runFirstRunWizard(config)
-  }
+  await ensureConfigured(config)
 
   cleanupOldLogs()
 
