@@ -3,8 +3,14 @@ import readline from 'node:readline'
 const TIMEOUT_MS = 30_000
 
 export async function askConfirm(message: string): Promise<boolean> {
+  const stdin = process.stdin
+  // 主 REPL 创建的 readline 已把 stdin 置为 raw mode；
+  // 新建的 rl 在 close() 时会把 stdin 切回 cooked，导致主 REPL 之后按 Enter 变成 ^M。
+  // 进入前记录、离开时恢复，避免干扰上层 readline。
+  const wasRaw = stdin.isTTY ? stdin.isRaw === true : false
+
   const rl = readline.createInterface({
-    input: process.stdin,
+    input: stdin,
     output: process.stderr,
     terminal: true,
   })
@@ -17,6 +23,13 @@ export async function askConfirm(message: string): Promise<boolean> {
       resolved = true
       clearTimeout(timer)
       rl.close()
+      if (wasRaw && stdin.isTTY) {
+        try {
+          stdin.setRawMode(true)
+        } catch {
+          // 非 TTY 或权限问题时忽略
+        }
+      }
       resolve(confirmed)
     }
 

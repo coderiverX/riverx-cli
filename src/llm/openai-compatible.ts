@@ -1,6 +1,8 @@
-import OpenAI, { APIConnectionError, APIError } from 'openai'
+import OpenAI from 'openai'
 import type { RiverXConfig } from '../config/config.js'
 import type { ChatChunk, ChatMessage, ChatParams, LLMProvider, ToolDefinition } from './provider.js'
+import type { ProviderPreset } from './presets.js'
+import { convertOpenAIError } from './errors.js'
 
 type LLMConfig = RiverXConfig['llm']
 
@@ -42,73 +44,39 @@ function buildMessages(messages: ChatMessage[]): OpenAI.ChatCompletionMessagePar
   })
 }
 
-function convertError(err: unknown): Error {
-  // APIConnectionError 是 APIError 的子类，需先检查
-  if (err instanceof APIConnectionError) {
-    return new Error(
-      `Qwen API 连接失败：无法连接到 DashScope 服务。\n` +
-      `请检查网络连接和 base_url 配置，可稍后重试。\n` +
-      `若持续失败，请确认防火墙未拦截出站 HTTPS 请求。\n` +
-      `原始错误：${err.message}`,
-    )
-  }
-  if (err instanceof APIError) {
-    const status = err.status
-    if (status === 401) {
-      return new Error(
-        `Qwen API 认证失败（401）：API Key 无效或已过期。\n` +
-        `请检查 ~/.riverx/config.json 中的 api_key，或通过环境变量 RIVERX_API_KEY 设置。\n` +
-        `原始错误：${err.message}`,
-      )
-    }
-    if (status === 429) {
-      return new Error(
-        `Qwen API 请求频率超限（429）：当前请求过于频繁。\n` +
-        `请稍后重试，或检查账户配额。\n` +
-        `原始错误：${err.message}`,
-      )
-    }
-    if (status !== undefined && status >= 500) {
-      return new Error(
-        `Qwen API 服务异常（${status}）：服务端返回错误。\n` +
-        `请稍后重试。如持续出现请联系 DashScope 支持。\n` +
-        `原始错误：${err.message}`,
-      )
-    }
-    return new Error(
-      `Qwen API 错误（${status ?? '未知状态码'}）：${err.message}`,
-    )
-  }
-  if (err instanceof Error) return err
-  return new Error(String(err))
-}
-
-export class QwenProvider implements LLMProvider {
+/**
+ * OpenAI 兼容协议的通用 Provider。
+ * 适用于 OpenAI / DeepSeek / Kimi (Moonshot) / Qwen (DashScope 兼容端点) 等。
+ */
+export class OpenAICompatibleProvider implements LLMProvider {
   private readonly client: OpenAI
   private readonly config: LLMConfig
+  private readonly preset: ProviderPreset
 
-  constructor(config: LLMConfig) {
+  constructor(config: LLMConfig, preset: ProviderPreset) {
     this.config = config
+    this.preset = preset
     this.client = new OpenAI({
       apiKey: config.api_key,
-      baseURL: config.base_url,
+      baseURL: config.base_url ?? preset.base_url,
       timeout: 60_000,
       maxRetries: 1,
     })
   }
 
   async *chat(params: ChatParams): AsyncIterable<ChatChunk> {
+    const model = params.model ?? this.config.model ?? this.preset.default_model
     let stream: AsyncIterable<OpenAI.ChatCompletionChunk>
     try {
       stream = await this.client.chat.completions.create({
-        model: params.model ?? this.config.model,
+        model,
         messages: buildMessages(params.messages),
         tools: params.tools?.length ? buildTools(params.tools) : undefined,
         temperature: params.temperature,
         stream: true as const,
       })
     } catch (err) {
-      throw convertError(err)
+      throw convertOpenAIError(err, this.preset.display_name)
     }
 
     try {
@@ -133,7 +101,7 @@ export class QwenProvider implements LLMProvider {
         }
       }
     } catch (err) {
-      throw convertError(err)
+      throw convertOpenAIError(err, this.preset.display_name)
     }
   }
 }

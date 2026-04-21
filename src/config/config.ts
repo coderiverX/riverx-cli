@@ -1,13 +1,23 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { getPreset } from '../llm/presets.js'
 
 export interface RiverXConfig {
   llm: {
     provider: string
-    model: string
-    base_url: string
+    /** 可选；未设置时回退到对应 provider 预设的 default_model */
+    model?: string
+    /** 可选；未设置时回退到对应 provider 预设的 base_url */
+    base_url?: string
     api_key: string
+    /**
+     * 使用的线上协议：
+     * - 'chat'（默认）：OpenAI Chat Completions（`/v1/chat/completions`）
+     * - 'responses'   ：OpenAI Responses API（`/v1/responses`），用于 gpt-5-codex 等
+     * 未设置时回退到 provider 预设的 wire_api（默认 'chat'）。
+     */
+    wire_api?: 'chat' | 'responses'
   }
   security: {
     workspace_root: string
@@ -50,9 +60,20 @@ function ensureConfigDir(): void {
 }
 
 function applyEnvOverrides(config: RiverXConfig): RiverXConfig {
+  // 通用覆盖：RIVERX_* 永远最高优先级
   if (process.env.RIVERX_API_KEY) config.llm.api_key = process.env.RIVERX_API_KEY
   if (process.env.RIVERX_MODEL) config.llm.model = process.env.RIVERX_MODEL
   if (process.env.RIVERX_BASE_URL) config.llm.base_url = process.env.RIVERX_BASE_URL
+
+  // api_key 仍为空时，按 provider 对应的环境变量回退
+  if (!config.llm.api_key) {
+    const preset = getPreset(config.llm.provider)
+    if (preset) {
+      const envKey = process.env[preset.api_key_env]
+      if (envKey) config.llm.api_key = envKey
+    }
+  }
+
   return config
 }
 
