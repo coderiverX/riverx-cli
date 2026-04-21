@@ -200,15 +200,15 @@
 
 ### 1.9 命令风险分类 (`src/security/risk-classifier.ts`)
 
-- [x] 定义四级风险枚举：`safe`, `medium`, `high`, `forbidden`（在 permissions.ts 中定义）
-- [x] 实现 `classifyCommand(cmd: string): RiskLevel`（在 permissions.ts 中实现）
-- [ ] 独立文件 `src/security/risk-classifier.ts`（当前与 permissions.ts 合并）
-- [ ] 安全命令白名单：ls, cat, head, tail, wc, pwd, echo, whoami, date, uname, df, du, ps, env, which, file, stat, id
+- [x] 定义四级风险枚举：`safe`, `medium`, `high`, `forbidden`
+- [x] 实现 `classifyCommand(cmd: string): RiskLevel`
+- [x] 独立文件 `src/security/risk-classifier.ts`（permissions.ts 保留 re-export）
+- [x] 安全命令白名单：ls, cat, head, tail, wc, pwd, echo, whoami, date, uname, df, du, ps, env, which, file, stat, id
 - [x] 高危命令模式：rm -r, chmod -R, chown -R, kill -9, sudo, dd, mkfs 等
 - [x] 禁止命令模式：格式化磁盘、>/dev/sda、:(){ :|:& };:
-- [ ] 中等风险：未命中白名单/高危列表时默认为 medium（当前默认为 safe）
-- [ ] 支持管道命令分析（`a | b` 取最高风险）
-- [ ] 支持 `&&` / `||` / `;` 链式命令分析
+- [x] 中等风险：未命中白名单/高危列表时默认为 medium
+- [x] 支持管道命令分析（`a | b` 取最高风险）
+- [x] 支持 `&&` / `||` / `;` 链式命令分析
 - [x] 单元测试：覆盖各类命令的风险判定
 
 ### 1.10 权限检查 (`src/security/permissions.ts`)

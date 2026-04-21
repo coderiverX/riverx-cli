@@ -2,45 +2,9 @@ import { describe, expect, it } from 'vitest'
 import os from 'node:os'
 import path from 'node:path'
 import {
-  classifyCommand,
   checkCommandPermission,
   checkPathPermission,
 } from '../../src/security/permissions.js'
-
-describe('classifyCommand', () => {
-  // safe
-  it('ls → safe', () => expect(classifyCommand('ls -la')).toBe('safe'))
-  it('cat → safe', () => expect(classifyCommand('cat file.txt')).toBe('safe'))
-  it('echo → safe', () => expect(classifyCommand('echo hello')).toBe('safe'))
-  it('grep → safe', () => expect(classifyCommand('grep -r foo .')).toBe('safe'))
-  it('find (无 -delete) → safe', () => expect(classifyCommand('find . -name "*.ts"')).toBe('safe'))
-
-  // medium
-  it('rm (无 -r) → medium', () => expect(classifyCommand('rm nginx.conf')).toBe('medium'))
-  it('rm -f → medium', () => expect(classifyCommand('rm -f file.txt')).toBe('medium'))
-  it('mv → medium', () => expect(classifyCommand('mv a.txt b.txt')).toBe('medium'))
-  it('mkdir → medium', () => expect(classifyCommand('mkdir -p /tmp/foo')).toBe('medium'))
-  it('wget → medium', () => expect(classifyCommand('wget https://example.com/file')).toBe('medium'))
-  it('curl -o → medium', () => expect(classifyCommand('curl -o out.txt https://example.com')).toBe('medium'))
-  it('npm install → medium', () => expect(classifyCommand('npm install lodash')).toBe('medium'))
-  it('chmod (无 -R) → medium', () => expect(classifyCommand('chmod 755 file.sh')).toBe('medium'))
-
-  // high
-  it('rm -r → high', () => expect(classifyCommand('rm -r ./dist')).toBe('high'))
-  it('sudo → high', () => expect(classifyCommand('sudo apt-get update')).toBe('high'))
-  it('pkill → high', () => expect(classifyCommand('pkill node')).toBe('high'))
-  it('kill -9 → high', () => expect(classifyCommand('kill -9 1234')).toBe('high'))
-  it('chmod -R → high', () => expect(classifyCommand('chmod -R 777 /tmp')).toBe('high'))
-  it('shred → high', () => expect(classifyCommand('shred -u secret.txt')).toBe('high'))
-
-  // forbidden
-  it('rm -rf / → forbidden', () => expect(classifyCommand('rm -rf /')).toBe('forbidden'))
-  it('rm -fr / → forbidden', () => expect(classifyCommand('rm -fr /')).toBe('forbidden'))
-  it('mkfs → forbidden', () => expect(classifyCommand('mkfs.ext4 /dev/sda')).toBe('forbidden'))
-  it('dd if= → forbidden', () => expect(classifyCommand('dd if=/dev/zero of=/dev/sda')).toBe('forbidden'))
-  it('fork bomb → forbidden', () => expect(classifyCommand(':(){:|:&};:')).toBe('forbidden'))
-  it('>/dev/sd → forbidden', () => expect(classifyCommand('echo foo > /dev/sda')).toBe('forbidden'))
-})
 
 describe('checkCommandPermission', () => {
   it('safe + headless → allow', () =>

@@ -1,63 +1,13 @@
 import path from 'node:path'
 import { isForbiddenWritePath } from '../utils/path.js'
 
-export type RiskLevel = 'safe' | 'medium' | 'high' | 'forbidden'
+export type { RiskLevel } from './risk-classifier.js'
+export { classifyCommand } from './risk-classifier.js'
+
+import type { RiskLevel } from './risk-classifier.js'
+
 export type ExecutionMode = 'headless' | 'repl'
 export type PermissionResult = 'allow' | 'deny' | 'need_confirm'
-
-// ── 风险分级正则 ───────────────────────────────────────────────────────────────
-
-const FORBIDDEN_PATTERNS: RegExp[] = [
-  /rm\s+-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+\/(?:\s|$)/,  // rm -rf /
-  /rm\s+-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*\s+\/(?:\s|$)/,  // rm -fr /
-  /\bmkfs\b/,
-  /\bdd\s+if=/,
-  /:\(\)\s*\{[^}]*\}/,  // fork bomb
-  />\s*\/dev\/sd/,
-]
-
-const HIGH_PATTERNS: RegExp[] = [
-  /\brm\s+-[a-zA-Z]*r[a-zA-Z]*/,         // rm -r, rm -rf (非根目录)
-  /\b(chmod|chown)\s+-R\b/i,
-  /\b(pkill|killall)\b/,
-  /\bkill\s+-9\b/,
-  /\bsudo\b/,
-  /\bsu\s+-\b/,
-  /\btruncate\b/,
-  /\bshred\b/,
-]
-
-const MEDIUM_PATTERNS: RegExp[] = [
-  /\brm\b/,                                                            // rm（含 -f，不含 -r，-r 已被 HIGH 先匹配）
-  /\bmv\b/,
-  /\bcp\b/,                                                            // cp（含 -r，已被 HIGH 先匹配后不会到这里，但加上兜底）
-  /\b(apt|apt-get|brew|yum|dnf)\s+(install|remove|purge)\b/i,
-  /\b(pip|pip3|npm|yarn|pnpm)\s+install\b/,
-  /\bcurl\b.*\s-[a-zA-Z]*o\b/,                                        // curl -o
-  /\bwget\b/,
-  /\bssh\b/,
-  /\bmkdir\b/,
-  /\bchmod\b/,                                                         // chmod (不含 -R，已被 HIGH 先匹配)
-]
-
-// ── 公开 API ──────────────────────────────────────────────────────────────────
-
-/**
- * 根据命令字符串推断风险等级。
- * 按 forbidden → high → medium → safe 顺序匹配，首个命中即返回。
- */
-export function classifyCommand(command: string): RiskLevel {
-  for (const re of FORBIDDEN_PATTERNS) {
-    if (re.test(command)) return 'forbidden'
-  }
-  for (const re of HIGH_PATTERNS) {
-    if (re.test(command)) return 'high'
-  }
-  for (const re of MEDIUM_PATTERNS) {
-    if (re.test(command)) return 'medium'
-  }
-  return 'safe'
-}
 
 /**
  * 根据风险等级和执行模式决定是否允许、拒绝或需要确认。
