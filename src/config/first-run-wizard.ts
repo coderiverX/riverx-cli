@@ -1,12 +1,29 @@
 import path from 'node:path'
 import os from 'node:os'
 import chalk from 'chalk'
+import ora from 'ora'
 import { select, input, password } from '@inquirer/prompts'
 
 import { saveConfig, type RiverXConfig } from './config.js'
 import { PROVIDER_PRESETS, isProviderName, type ProviderName } from '../llm/presets.js'
+import { createProvider } from '../llm/factory.js'
 
 const PROVIDER_ORDER: ProviderName[] = ['openai', 'deepseek', 'kimi', 'qwen']
+
+/**
+ * 用最小请求探测 API Key / base_url / model 是否可用。
+ * 拿到首个流式 chunk 即视为连通成功；否则抛出 convertOpenAIError 处理过的错误。
+ */
+async function verifyApiKey(config: RiverXConfig): Promise<void> {
+  const provider = createProvider(config.llm)
+  const stream = provider.chat({
+    messages: [{ role: 'user', content: 'ping' }],
+    temperature: 0,
+  })
+  for await (const _ of stream) {
+    break
+  }
+}
 
 /**
  * 交互式首次运行向导：通过上下键选择 + 输入完成 provider / base_url / model / API Key / wire_api 配置。
@@ -46,7 +63,7 @@ export async function runFirstRunWizard(config: RiverXConfig): Promise<RiverXCon
     default: preset.default_model,
   })
 
-  const apiKey = await password({
+  let apiKey = await password({
     message: `${preset.display_name} API Key`,
     mask: '*',
     validate: v => (v.trim().length > 0 ? true : 'API Key 不能为空'),
@@ -72,6 +89,37 @@ export async function runFirstRunWizard(config: RiverXConfig): Promise<RiverXCon
     config.llm.wire_api = wireApi
   } else {
     delete config.llm.wire_api
+  }
+
+  while (true) {
+    const spinner = ora(`正在验证 ${preset.display_name} API Key...`).start()
+    try {
+      await verifyApiKey(config)
+      spinner.succeed(chalk.green('API Key 验证成功'))
+      break
+    } catch (err) {
+      spinner.fail(chalk.red('API Key 验证失败'))
+      const msg = err instanceof Error ? err.message : String(err)
+      process.stdout.write(chalk.dim(msg) + '\n')
+
+      const action = await select<'retry' | 'skip' | 'quit'>({
+        message: '下一步？',
+        choices: [
+          { name: '重新输入 API Key', value: 'retry' },
+          { name: '跳过验证并保存当前配置', value: 'skip' },
+          { name: '退出向导', value: 'quit' },
+        ],
+        default: 'retry',
+      })
+      if (action === 'quit') process.exit(1)
+      if (action === 'skip') break
+      apiKey = await password({
+        message: `${preset.display_name} API Key`,
+        mask: '*',
+        validate: v => (v.trim().length > 0 ? true : 'API Key 不能为空'),
+      })
+      config.llm.api_key = apiKey.trim()
+    }
   }
 
   saveConfig(config)
