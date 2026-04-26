@@ -1,3 +1,6 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { execCmd } from '../../src/tools/exec-cmd.js'
 import type { ToolContext } from '../../src/tool.js'
@@ -47,4 +50,33 @@ describe('exec_cmd 工具', () => {
     const parsed = JSON.parse(result.output) as { error: string }
     expect(parsed.error).toMatch(/forbidden/)
   })
+
+  it('超时时杀掉 shell 的子孙进程（进程组）', async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'riverx-exec-'))
+    const pidFile = path.join(tmp, 'child.pid')
+
+    // bash 子 shell 内 fork 出一个 sleep，把 sleep 的 PID 写到文件；然后 wait
+    const command = `bash -c 'sleep 30 & echo $! > ${pidFile}; wait'`
+    const result = await execCmd.execute({ command, timeout_ms: 300 }, makeCtx())
+
+    expect(result.success).toBe(false)
+    expect((JSON.parse(result.output) as { error: string }).error).toMatch(/timeout/)
+
+    // 等 killGroup → 内核清理
+    await new Promise(r => setTimeout(r, 1000))
+
+    const pid = Number(fs.readFileSync(pidFile, 'utf-8').trim())
+    expect(pid).toBeGreaterThan(0)
+
+    // process.kill(pid, 0) 探测：进程不存在会抛 ESRCH
+    let alive = true
+    try {
+      process.kill(pid, 0)
+    } catch {
+      alive = false
+    }
+    expect(alive).toBe(false)
+
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }, 10_000)
 })
