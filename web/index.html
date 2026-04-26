@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RiverX — 用自然语言操作你的系统</title>
+    <meta
+      name="description"
+      content="RiverX 是一个面向 Linux / macOS 的命令行系统操作助手，把自然语言指令转换为安全可控的 shell 操作。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg: '#0a0a0b',
+              ink: '#e7e9ee',
+              dim: '#9aa0a6',
+              line: '#1c1d22',
+              card: '#101116',
+              accent: '#22d3ee',
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: #0a0a0b;
+        color: #e7e9ee;
+        font-family: 'Inter', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .grid-bg {
+        background-image:
+          linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 80%);
+      }
+      .glow {
+        background:
+          radial-gradient(600px 280px at 50% -10%, rgba(34, 211, 238, 0.18), transparent 60%),
+          radial-gradient(420px 220px at 80% 10%, rgba(99, 102, 241, 0.12), transparent 60%);
+      }
+      .hairline {
+        border-color: rgba(255, 255, 255, 0.07);
+      }
+      .card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 14px;
+      }
+      .card:hover {
+        border-color: rgba(34, 211, 238, 0.35);
+      }
+      .cursor::after {
+        content: '▋';
+        margin-left: 4px;
+        color: #22d3ee;
+        animation: blink 1s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      .terminal {
+        background: #0d0e13;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.04) inset,
+          0 30px 80px -20px rgba(0, 0, 0, 0.6);
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 9999px;
+      }
+      .pill {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .accent-grad {
+        background: linear-gradient(180deg, #ffffff 0%, #b8c0ce 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 14px;
+        transition: 150ms ease;
+      }
+      .btn-primary {
+        background: #22d3ee;
+        color: #06121a;
+      }
+      .btn-primary:hover {
+        background: #67e8f9;
+      }
+      .btn-ghost {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #e7e9ee;
+      }
+      .btn-ghost:hover {
+        border-color: rgba(34, 211, 238, 0.5);
+      }
+      .step-line::after {
+        content: '';
+        position: absolute;
+        right: -12px;
+        top: 22px;
+        width: 24px;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      @media (max-width: 768px) {
+        .step-line::after {
+          display: none;
+        }
+      }
+      .reveal {
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 600ms ease,
+          transform 600ms ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <!-- Nav -->
+    <header class="fixed top-0 inset-x-0 z-40 backdrop-blur-md bg-bg/60 border-b hairline">
+      <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+        <a href="#" class="flex items-center gap-2">
+          <span
+            class="w-6 h-6 rounded-md bg-gradient-to-br from-accent to-indigo-400 flex items-center justify-center font-mono text-[11px] text-bg font-bold"
+            >R</span
+          >
+          <span class="font-semibold tracking-tight">riverx</span>
+          <span class="font-mono text-[11px] text-dim ml-1">v0.1.0</span>
+        </a>
+        <nav class="hidden md:flex items-center gap-8 text-sm text-dim">
+          <a href="#features" class="hover:text-ink transition">特性</a>
+          <a href="#how" class="hover:text-ink transition">运作方式</a>
+          <a href="#install" class="hover:text-ink transition">快速开始</a>
+          <a
+            href="https://github.com/coderiverX/riverx-cli"
+            class="hover:text-ink transition"
+            target="_blank"
+            rel="noopener"
+            >GitHub</a
+          >
+        </nav>
+        <a
+          href="#install"
+          class="btn btn-ghost text-xs hidden sm:inline-flex"
+          style="padding: 6px 12px"
+          >Install</a
+        >
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="relative pt-36 pb-24 overflow-hidden">
+      <div class="absolute inset-0 grid-bg pointer-events-none"></div>
+      <div class="absolute inset-0 glow pointer-events-none"></div>
+      <div class="relative max-w-6xl mx-auto px-6">
+        <div class="flex flex-col items-center text-center">
+          <span
+            class="pill rounded-full px-3 py-1 text-xs text-dim font-mono inline-flex items-center gap-2 reveal"
+          >
+            <span class="dot bg-accent" style="width: 6px; height: 6px"></span>
+            for Linux &amp; macOS &middot; CLI-first
+          </span>
+          <h1
+            class="mt-6 text-5xl sm:text-6xl md:text-7xl font-semibold tracking-tight leading-[1.05] reveal"
+          >
+            <span class="accent-grad">用一句话，</span>
+            <br />
+            <span class="text-ink">操作你的系统。</span>
+          </h1>
+          <p class="mt-6 max-w-2xl text-base sm:text-lg text-dim leading-relaxed reveal">
+            RiverX 是一个命令行的 系统操作助手 ——
+            把自然语言转成结构化的工具调用，安全、可控地完成文件、进程、配置等日常运维操作。
+          </p>
+          <div class="mt-8 flex items-center gap-3 reveal">
+            <a href="#install" class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 17 10 11 4 5" />
+                <line x1="12" y1="19" x2="20" y2="19" />
+              </svg>
+              开始使用
+            </a>
+            <a
+              href="https://github.com/coderiverX/riverx-cli"
+              target="_blank"
+              rel="noopener"
+              class="btn btn-ghost"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.95.1-.74.4-1.25.73-1.54-2.55-.29-5.23-1.27-5.23-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.17a10.96 10.96 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.59.23 2.76.11 3.05.74.8 1.18 1.82 1.18 3.07 0 4.4-2.69 5.36-5.25 5.65.41.36.78 1.06.78 2.14v3.18c0 .31.21.67.79.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/>
+              </svg>
+              在 GitHub 查看
+            </a>
+          </div>
+        </div>
+
+        <!-- Terminal demo -->
+        <div class="mt-16 max-w-3xl mx-auto reveal">
+          <div class="terminal rounded-xl overflow-hidden">
+            <div class="flex items-center gap-2 px-4 h-9 border-b hairline">
+              <span class="dot" style="background: #ff5f57"></span>
+              <span class="dot" style="background: #febc2e"></span>
+              <span class="dot" style="background: #28c840"></span>
+              <span class="ml-3 text-xs text-dim font-mono">~ riverx</span>
+            </div>
+            <div class="p-5 sm:p-6 font-mono text-[13px] sm:text-sm leading-7" id="term">
+              <div><span class="text-accent">$</span> <span class="text-dim">riverx</span> <span id="t1"></span></div>
+              <div id="line2" class="hidden"><span class="text-dim mt-2 block">→ 计划</span></div>
+              <div id="plan" class="hidden text-dim/90 pl-3 border-l hairline space-y-0.5">
+                <div><span class="text-accent">1.</span> list_files <span class="text-dim">.</span></div>
+                <div><span class="text-accent">2.</span> exec_cmd <span class="text-dim">"du -sh ./* | sort -h | tail -10"</span></div>
+              </div>
+              <div id="line3" class="hidden text-dim mt-2">→ 执行 <span class="text-emerald-400">●</span> <span class="text-dim">输出</span></div>
+              <div id="out" class="hidden text-dim/90 pl-3 border-l hairline">
+                <div>132M  ./node_modules</div>
+                <div>&nbsp;&nbsp;48M  ./dist</div>
+                <div>&nbsp;&nbsp;12M  ./docs</div>
+              </div>
+              <div id="prompt" class="hidden mt-2"><span class="text-accent">$</span> <span class="cursor"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="relative py-24 border-t hairline">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="max-w-2xl">
+          <p class="text-xs font-mono uppercase tracking-widest text-accent">// features</p>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight">
+            八个核心工具，覆盖日常运维。
+          </h2>
+          <p class="mt-3 text-dim">
+            LLM 不再生成自由格式 shell 脚本，而是产出结构化的工具调用 —— 每一步都可审、可控、可中断。
+          </p>
+        </div>
+
+        <div class="mt-12 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <!-- card -->
+          <div class="card p-5 transition reveal">
+            <div class="font-mono text-xs text-accent">read_file</div>
+            <div class="mt-3 text-sm text-dim leading-relaxed">读取文件内容，支持按行范围切片。</div>
+          </div>
+          <div class="card p-5 transition reveal">
+            <div class="font-mono text-xs text-accent">list_files</div>
+            <div class="mt-3 text-sm text-dim leading-relaxed">列出目录下文件，支持 glob / 排除规则。</div>
+          </div>
+          <div class="card p-5 transition reveal">
+            <div class="font-mono text-xs text-accent">grep</div>
+            <div class="mt-3 text-sm text-dim leading-relaxed">在文件树中按正则查找文本。</div>
+          </div>
+          <div class="card p-5 transition reveal">
+            <div class="font-mono text-xs text-accent">write_file</div>
+            <div class="mt-3 text-sm text-dim leading-relaxed">原子写入文件，自动创建父目录。</div>
+          </div>
+          <div class="card p-5 transition reveal">
+            <div class="font-mono text-xs text-accent">patch_file</div>
+            <div class="mt-3 text-sm text-dim leading-relaxed">基于上下文的精确编辑，避免整文件重写。</div>
+          </div>
+          <div class="card p-5 transition reveal">
+            <div class="font-mono text-xs text-accent">exec_cmd</div>
+            <div class="mt-3 text-sm text-dim leading-relaxed">受控执行 shell，超时与子孙进程组清理。</div>
+          </div>
+          <div class="card p-5 transition reveal">
+            <div class="font-mono text-xs text-accent">confirm</div>
+            <div class="mt-3 text-sm text-dim leading-relaxed">高风险操作前请求人工确认。</div>
+          </div>
+          <div class="card p-5 transition reveal">
+            <div class="font-mono text-xs text-accent">session</div>
+            <div class="mt-3 text-sm text-dim leading-relaxed">维护 REPL 上下文与多轮工具调用历史。</div>
+          </div>
+        </div>
+
+        <!-- meta strip -->
+        <div class="mt-10 grid sm:grid-cols-3 gap-3">
+          <div class="card p-5 reveal">
+            <div class="text-xs font-mono uppercase text-dim">platforms</div>
+            <div class="mt-2 text-sm">Linux &middot; macOS（bash / zsh 自动适配）</div>
+          </div>
+          <div class="card p-5 reveal">
+            <div class="text-xs font-mono uppercase text-dim">llm</div>
+            <div class="mt-2 text-sm">Qwen 优先 &middot; OpenAI Responses API</div>
+          </div>
+          <div class="card p-5 reveal">
+            <div class="text-xs font-mono uppercase text-dim">safety</div>
+            <div class="mt-2 text-sm">Workspace 边界 &middot; 风险分级 &middot; 进程组清理</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how" class="py-24 border-t hairline">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="max-w-2xl">
+          <p class="text-xs font-mono uppercase tracking-widest text-accent">// pipeline</p>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight">
+            自然语言 → 计划 → 执行。
+          </h2>
+        </div>
+
+        <div class="mt-12 grid gap-6 md:grid-cols-3">
+          <div class="card p-6 relative step-line reveal">
+            <div class="font-mono text-xs text-dim">01</div>
+            <div class="mt-2 font-medium">理解意图</div>
+            <p class="mt-3 text-sm text-dim leading-relaxed">
+              LLM 解析自然语言指令，识别工作区、目标对象与潜在风险。
+            </p>
+          </div>
+          <div class="card p-6 relative step-line reveal">
+            <div class="font-mono text-xs text-dim">02</div>
+            <div class="mt-2 font-medium">生成计划</div>
+            <p class="mt-3 text-sm text-dim leading-relaxed">
+              产出结构化的工具调用序列，而非自由 shell 脚本，可审可改。
+            </p>
+          </div>
+          <div class="card p-6 reveal">
+            <div class="font-mono text-xs text-dim">03</div>
+            <div class="mt-2 font-medium">受控执行</div>
+            <p class="mt-3 text-sm text-dim leading-relaxed">
+              工具按风险等级运行，高风险触发 confirm，超时/中断回收子孙进程。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Install -->
+    <section id="install" class="py-24 border-t hairline">
+      <div class="max-w-6xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-start">
+        <div>
+          <p class="text-xs font-mono uppercase tracking-widest text-accent">// quick start</p>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight">
+            一条命令，开始使用。
+          </h2>
+          <p class="mt-4 text-dim">
+            前置要求：Node.js ≥ 20、pnpm。首次运行会自动进入交互式向导，引导你选择 LLM provider 并校验 API Key。
+          </p>
+          <div class="mt-6 flex flex-wrap gap-2 text-xs font-mono">
+            <span class="pill rounded-full px-3 py-1 text-dim">Node ≥ 20</span>
+            <span class="pill rounded-full px-3 py-1 text-dim">pnpm</span>
+            <span class="pill rounded-full px-3 py-1 text-dim">~/.riverx/config.json</span>
+          </div>
+        </div>
+
+        <div class="terminal rounded-xl overflow-hidden">
+          <div class="flex items-center gap-2 px-4 h-9 border-b hairline">
+            <span class="dot" style="background: #ff5f57"></span>
+            <span class="dot" style="background: #febc2e"></span>
+            <span class="dot" style="background: #28c840"></span>
+            <span class="ml-3 text-xs text-dim font-mono">install.sh</span>
+          </div>
+          <pre class="p-5 sm:p-6 font-mono text-[13px] leading-7 text-dim/90 overflow-x-auto"><span class="text-dim/60"># 1. 克隆并构建</span>
+<span class="text-accent">$</span> git clone git@github.com:coderiverX/riverx-cli.git
+<span class="text-accent">$</span> cd riverx-cli &amp;&amp; pnpm install &amp;&amp; pnpm build
+
+<span class="text-dim/60"># 2. 全局安装（可选）</span>
+<span class="text-accent">$</span> npm install -g .
+
+<span class="text-dim/60"># 3. 直接使用</span>
+<span class="text-accent">$</span> riverx <span class="text-emerald-300">"列出当前目录下最大的 10 个文件"</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-20 border-t hairline">
+      <div class="max-w-3xl mx-auto px-6 text-center">
+        <h3 class="text-2xl sm:text-3xl font-semibold tracking-tight">
+          让运维像聊天一样轻。
+        </h3>
+        <p class="mt-3 text-dim">开源、可审计，欢迎在 GitHub 提 issue 或 PR。</p>
+        <div class="mt-6 flex justify-center gap-3">
+          <a
+            href="https://github.com/coderiverX/riverx-cli"
+            target="_blank"
+            rel="noopener"
+            class="btn btn-primary"
+          >
+            前往 GitHub
+          </a>
+          <a href="#features" class="btn btn-ghost">了解特性</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="border-t hairline py-10">
+      <div
+        class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-dim font-mono"
+      >
+        <div class="flex items-center gap-2">
+          <span class="dot bg-accent" style="width: 6px; height: 6px"></span>
+          riverx &middot; v0.1.0
+        </div>
+        <div>MIT License &middot; built for the terminal.</div>
+      </div>
+    </footer>
+
+    <script>
+      // Reveal on scroll
+      const io = new IntersectionObserver(
+        (es) => es.forEach((e) => e.isIntersecting && e.target.classList.add('in')),
+        { threshold: 0.12 },
+      )
+      document.querySelectorAll('.reveal').forEach((el) => io.observe(el))
+
+      // Typing demo
+      const cmd = '"列出当前目录下最大的 10 个文件"'
+      const t1 = document.getElementById('t1')
+      const seq = [
+        () => (document.getElementById('line2').classList.remove('hidden')),
+        () => (document.getElementById('plan').classList.remove('hidden')),
+        () => (document.getElementById('line3').classList.remove('hidden')),
+        () => (document.getElementById('out').classList.remove('hidden')),
+        () => (document.getElementById('prompt').classList.remove('hidden')),
+      ]
+      let i = 0
+      function type() {
+        if (i <= cmd.length) {
+          t1.textContent = cmd.slice(0, i)
+          i++
+          setTimeout(type, 55)
+        } else {
+          seq.forEach((fn, idx) => setTimeout(fn, 350 * (idx + 1)))
+        }
+      }
+      setTimeout(type, 600)
+    </script>
+  </body>
+</html>
