@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/license-MIT-1f1f23)](#license)
 [![Status](https://img.shields.io/badge/status-v0.1.0_dev-22d3ee)](docs/PROGRESS.md)
 
-**Languages**: [English](README.md) · **简体中文**
+**官网**: [cli.coderiverx.com](https://cli.coderiverx.com/) · **Languages**: [English](README.md) · **简体中文**
 
 RiverX 是一个面向终端的**自然语言系统操作助手**：把指令翻译成结构化的工具调用，
 再由本地受控执行。不是「让 LLM 直接吐 shell 脚本」——每一步工具调用都可审、可控、可中断。

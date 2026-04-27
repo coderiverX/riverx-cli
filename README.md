@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/license-MIT-1f1f23)](#license)
 [![Status](https://img.shields.io/badge/status-v0.1.0_dev-22d3ee)](docs/PROGRESS.md)
 
-**Languages**: **English** · [简体中文](README.zh.md)
+**Website**: [cli.coderiverx.com](https://cli.coderiverx.com/) · **Languages**: **English** · [简体中文](README.zh.md)
 
 RiverX is a terminal-native **natural-language system operations assistant**: it
 translates your intent into structured tool calls and runs them under local
