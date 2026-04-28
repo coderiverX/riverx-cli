@@ -167,7 +167,7 @@ describe('QueryEngine 多轮循环', () => {
 
     // 始终返回工具调用，不返回文本
     const engine = new QueryEngine(
-      makeProvider(Array(31).fill('tool')),
+      makeProvider(Array(201).fill('tool')),
       registry,
       makePlatform(),
       makeShell(),
